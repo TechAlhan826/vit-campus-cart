@@ -1,4 +1,3 @@
-
 const CACHE_NAME = 'unicart-v1';
 const urlsToCache = [
   '/',
@@ -7,6 +6,7 @@ const urlsToCache = [
   '/manifest.json'
 ];
 
+// Install: Cache static assets.
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -14,15 +14,24 @@ self.addEventListener('install', event => {
   );
 });
 
+// Fetch: Cache-first for static; network-only for /api (no cache for auth/mutations).
 self.addEventListener('fetch', event => {
+  // Network-only for API routes: Always fresh fetch, reject offline.
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        // Offline: Return empty response; app handles Axios error.
+        return new Response(JSON.stringify({ error: 'Offline - Check connection' }), {
+          status: 503,
+          statusText: 'Service Unavailable'
+        });
+      })
+    );
+    return;
+  }
+  // Static: Cache-first fallback.
   event.respondWith(
     caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
+      .then(response => response || fetch(event.request))
   );
 });

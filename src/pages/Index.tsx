@@ -91,7 +91,7 @@ const Index = () => {
     { 
       title: "Live Chat Support", 
       description: "Real-time assistance for instant query resolution",
-      status: "Coming Soon" 
+      status: "In Development" 
     },
     { 
       title: "Digital Marketplace", 
@@ -126,7 +126,7 @@ const Index = () => {
                 </div>
                 <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
                   Your Campus{' '}
-                  <span className="text-hero gradient-campus">
+                  <span className="text-hero gradient-campus/10 rounded-lg">
                     Marketplace
                   </span>
                   <br />
@@ -213,7 +213,7 @@ const Index = () => {
               Why Choose UniCart?
             </Badge>
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-              <span className="text-campus gradient-campus">Production-Ready Features</span> 
+              <span className="text-campus gradient-campus/10 rounded-lg">Production-Ready Features</span> 
               for Campus Commerce
             </h2>
             <p className="text-xl text-text-secondary max-w-2xl mx-auto">
@@ -256,7 +256,7 @@ const Index = () => {
                 Our Competitive Edge
               </Badge>
               <h2 className="text-3xl lg:text-4xl font-bold mb-6">
-                Why <span className="text-campus gradient-campus">UniCart</span> Beats 
+                Why <span className="text-campus gradient-campus/10 rounded-lg/10 rounded-lg">UniCart</span> Beats 
                 Generic Marketplaces
               </h2>
               <div className="space-y-4">
@@ -303,7 +303,7 @@ const Index = () => {
               Future Roadmap
             </Badge>
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-              <span className="text-campus gradient-campus">Global Vision</span>, 
+              <span className="text-campus gradient-campus/10 rounded-lg">Global Vision</span>, 
               Campus Focus
             </h2>
             <p className="text-xl text-text-secondary max-w-2xl mx-auto">

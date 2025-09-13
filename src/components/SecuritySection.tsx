@@ -64,7 +64,7 @@ export const SecuritySection: React.FC = () => {
             </Badge>
           </div>
           <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-            <span className="text-success gradient-success">Bank-Grade Security</span> 
+            <span className="text-success gradient-success/10 rounded-lg">Bank-Grade Security </span> 
             for Campus Commerce
           </h2>
           <p className="text-xl text-text-secondary max-w-3xl mx-auto">

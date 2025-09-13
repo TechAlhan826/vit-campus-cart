@@ -18,29 +18,29 @@ export const TeamSection: React.FC = () => {
       name: "Mohammed Alhan N",
       rollNumber: "23BCA0173",
       role: "Lead Developer & Architect",
-      expertise: ["Full-Stack Development", "System Architecture", "DevOps"],
+      expertise: ["Full-Stack Development", "Node.js", "MongoDB", "API Development", "Payment Gateways", "Security", "System Architecture", "DevOps"],
       icon: <Code className="h-6 w-6" />
     },
     {
       name: "Vivek Joseph Emmanuel",
       rollNumber: "23BCA0235", 
       role: "Frontend Specialist",
-      expertise: ["React/Next.js", "UI/UX Design", "TypeScript"],
-      icon: <Users className="h-6 w-6" />
+      expertise: ["React/Next.js", "UI/UX Design", "TypeScript", "Testing"],
+      icon: <Award className="h-6 w-6" />
     },
     {
       name: "Aravind S",
       rollNumber: "23BCA0167",
-      role: "Backend Developer",
-      expertise: ["Node.js", "MongoDB", "API Development"],
-      icon: <Database className="h-6 w-6" />
+      role: "Unassigned",
+      expertise: [],
+      icon: <Users className="h-6 w-6" />
     },
     {
       name: "Nishant G", 
       rollNumber: "23BCA0252",
-      role: "Security & Integration",
-      expertise: ["Payment Gateways", "Security", "Testing"],
-      icon: <Award className="h-6 w-6" />
+      role: "Unassigned",
+      expertise: [],
+      icon: <Users className="h-6 w-6" />
     }
   ];
 
@@ -52,7 +52,7 @@ export const TeamSection: React.FC = () => {
             Meet the DataXplorers Team
           </Badge>
           <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-            Built by <span className="text-campus gradient-campus">VIT Students</span>, 
+            Built by <span className="text-campus gradient-campus/10 rounded-lg">VIT Students</span>, 
             for <span className="text-primary">VIT Community</span>
           </h2>
           <p className="text-xl text-text-secondary max-w-3xl mx-auto">

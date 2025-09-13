@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, AuthResponse, LoginRequest, RegisterRequest } from '@/types';
+import axios from 'axios';
 import { useToast } from '@/hooks/use-toast';
+import { User, LoginRequest, RegisterRequest } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (credentials: LoginRequest) => Promise<boolean>;
-  register: (userData: RegisterRequest) => Promise<boolean>;
-  logout: () => void;
+  register: (data: RegisterRequest) => Promise<boolean>;
+  logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<boolean>;
   isAuthenticated: boolean;
   isAdmin: boolean;
@@ -18,172 +19,140 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be inside AuthProvider');
+  return ctx;
 };
+
+const LOCAL_TOKEN_KEY = 'unicart_token';
+
+// small helper: apply token to axios default header
+function applyToken(token?: string | null) {
+  if (token) axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  else delete axios.defaults.headers.common['Authorization'];
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Check if user is authenticated on app load
+  // boot: try token-first (localStorage), else cookie-based me
   useEffect(() => {
-    checkAuthStatus();
+    (async () => {
+      await checkAuthStatus();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAuthStatus = async () => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/auth/me', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setUser(data.data);
+      const token = localStorage.getItem(LOCAL_TOKEN_KEY);
+      if (token) {
+        applyToken(token);
+  const resp = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/auth/me`); // uses Authorization header
+        if (resp.data?.user) {
+          setUser(resp.data.user);
+          return;
         }
+        // fallback: clear invalid token
+        localStorage.removeItem(LOCAL_TOKEN_KEY);
+        applyToken(null);
       }
-    } catch (error) {
-      console.error('Auth check failed:', error);
+
+      // try cookie-based session (credentials: include)
+      try {
+  const resp2 = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/auth/me`, { withCredentials: true });
+        if (resp2.data?.user) {
+          setUser(resp2.data.user);
+        }
+      } catch {
+        setUser(null);
+      }
+    } catch (err) {
+      console.error('checkAuthStatus error', err);
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
   const login = async (credentials: LoginRequest): Promise<boolean> => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(credentials),
-      });
+      // prefer proxy path; backend may return { token, user } or set cookie
+  const resp = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/login`, credentials, { withCredentials: true });
+      const { token, user: u } = resp.data || {};
 
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        setUser(data.data.user);
-        toast({
-          title: "Welcome back!",
-          description: `Logged in successfully as ${data.data.user.name}`,
-        });
-        return true;
+      if (token) {
+        localStorage.setItem(LOCAL_TOKEN_KEY, token);
+        applyToken(token);
       } else {
-        toast({
-          title: "Login failed",
-          description: data.message || "Invalid credentials",
-          variant: "destructive",
-        });
-        return false;
+        // ensure no stale token header
+        applyToken(null);
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      toast({
-        title: "Login failed",
-        description: "Network error. Please try again.",
-        variant: "destructive",
-      });
+
+      if (u) setUser(u);
+      toast({ title: 'Welcome back!', description: u?.name || 'Logged in' });
+      return true;
+    } catch (err: any) {
+      console.error('login error', err);
+      toast({ title: 'Login failed', description: err.response?.data?.msg || err.message || 'Invalid credentials', variant: 'destructive' });
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const register = async (userData: RegisterRequest): Promise<boolean> => {
+  const register = async (data: RegisterRequest): Promise<boolean> => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(userData),
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        setUser(data.data.user);
-        toast({
-          title: "Welcome to UniCart!",
-          description: `Account created successfully for ${data.data.user.name}`,
-        });
-        return true;
-      } else {
-        toast({
-          title: "Registration failed",
-          description: data.message || "Unable to create account",
-          variant: "destructive",
-        });
-        return false;
-      }
-    } catch (error) {
-      console.error('Registration error:', error);
-      toast({
-        title: "Registration failed",
-        description: "Network error. Please try again.",
-        variant: "destructive",
-      });
+  const resp = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/register`, data, { withCredentials: true });
+      const { token, user: u } = resp.data || {};
+      if (token) {
+        localStorage.setItem(LOCAL_TOKEN_KEY, token);
+        applyToken(token);
+      } else applyToken(null);
+      if (u) setUser(u);
+      toast({ title: 'Welcome to UniCart!', description: u?.name || 'Account created' });
+      return true;
+    } catch (err: any) {
+      console.error('register error', err);
+      toast({ title: 'Registration failed', description: err.response?.data?.msg || err.message || 'Unable to register', variant: 'destructive' });
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
+      // best-effort server logout (clears cookie) and local cleanup
+  await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`, {}, { withCredentials: true });
+    } catch (err) {
+      console.error('logout error', err);
     } finally {
+      localStorage.removeItem(LOCAL_TOKEN_KEY);
+      applyToken(null);
       setUser(null);
-      toast({
-        title: "Logged out",
-        description: "You have been logged out successfully",
-      });
+      toast({ title: 'Logged out', description: 'You have been logged out' });
     }
   };
 
   const updateProfile = async (data: Partial<User>): Promise<boolean> => {
     try {
-      const response = await fetch('/api/auth/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-
-      const result = await response.json();
-
-      if (result.success && result.data) {
-        setUser(result.data);
-        toast({
-          title: "Profile updated",
-          description: "Your profile has been updated successfully",
-        });
+  const resp = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/auth/profile`, data, { withCredentials: true });
+      if (resp.data?.user) {
+        setUser(resp.data.user);
+        toast({ title: 'Profile updated', description: 'Saved' });
         return true;
-      } else {
-        toast({
-          title: "Update failed",
-          description: result.message || "Unable to update profile",
-          variant: "destructive",
-        });
-        return false;
       }
-    } catch (error) {
-      console.error('Profile update error:', error);
-      toast({
-        title: "Update failed",
-        description: "Network error. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: 'Update failed', description: resp.data?.msg || 'Unable to update', variant: 'destructive' });
+      return false;
+    } catch (err) {
+      console.error('updateProfile', err);
+      toast({ title: 'Update failed', description: 'Network error', variant: 'destructive' });
       return false;
     }
   };
@@ -201,9 +170,5 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isUser: !!user,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

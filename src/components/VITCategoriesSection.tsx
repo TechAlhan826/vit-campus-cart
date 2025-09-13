@@ -109,7 +109,7 @@ export const VITCategoriesSection: React.FC = () => {
             VIT-Specific Categories
           </Badge>
           <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-            Everything a <span className="text-campus gradient-campus">VITian Needs</span>
+            Everything a <span className="text-campus gradient-campus/10 rounded-lg">VITian Needs</span>
           </h2>
           <p className="text-xl text-text-secondary max-w-3xl mx-auto">
             From first-year essentials to final-year placement prep - discover categories 
