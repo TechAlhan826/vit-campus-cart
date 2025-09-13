@@ -38,7 +38,7 @@ const SellerProducts = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await api.get('/api/products?sellerId=me');
+      const response = await api.get(`${import.meta.env.VITE_BACKEND_URL}/api/products?sellerId=me`);
       if (response?.success) {
         setProducts(response.data?.items || []);
       }

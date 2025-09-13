@@ -54,7 +54,7 @@ const Products = () => {
     };
 
     try {
-      const response = await api.get(`/api/products?${new URLSearchParams(
+      const response = await api.get(`${import.meta.env.VITE_BACKEND_URL}/api/products?${new URLSearchParams(
         Object.entries(query).reduce((acc, [key, value]) => {
           if (value !== undefined) acc[key] = String(value);
           return acc;

@@ -46,15 +46,17 @@ const CreateProduct = () => {
     }
   });
 
-  const categories = [
-    'Textbooks & Study Materials',
-    'Electronics & Gadgets', 
-    'Hostel Essentials',
-    'Sports & Recreation',
-    'Fashion & Accessories',
-    'Lab Equipment',
-    'Others'
-  ];
+  // Inside CreateProduct.tsx
+
+const categories = [
+  { label: 'Textbooks & Study Materials', value: 'textbooks' },
+  { label: 'Electronics & Gadgets', value: 'electronics' },
+  { label: 'Hostel Essentials', value: 'hostel essentials' },
+  { label: 'Sports & Recreation', value: 'sports' },
+  { label: 'Fashion & Accessories', value: 'fashion' },
+  { label: 'Lab Equipment', value: 'lab equipment' },
+  { label: 'Others', value: 'others' }
+];
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -110,7 +112,7 @@ const CreateProduct = () => {
 
   const onSubmit = async (data: CreateProductFormData) => {
     try {
-      const response = await api.post('/api/products/createProduct', {
+  const response = await api.post(`${import.meta.env.VITE_BACKEND_URL}/api/products/create`, {
         ...data,
         images,
         tags,
@@ -185,20 +187,20 @@ const CreateProduct = () => {
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
                       <Select
-                        onValueChange={(value) => setValue('category', value)}
-                        defaultValue="Others"
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+  onValueChange={(value) => setValue('category', value)}
+  defaultValue="others"
+>
+  <SelectTrigger>
+    <SelectValue placeholder="Select category" />
+  </SelectTrigger>
+  <SelectContent>
+    {categories.map((c) => (
+      <SelectItem key={c.value} value={c.value}>
+        {c.label}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
                       {errors.category && (
                         <p className="text-sm text-destructive">{errors.category.message}</p>
                       )}

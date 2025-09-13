@@ -27,7 +27,7 @@ export const useCart = () => {
       setCart(null);
     }
     setLoading(false);
-  }, [api, isAuthenticated]);
+  }, [isAuthenticated]);
 
   // Add item to cart
   const addItem = useCallback(async (request: AddCartItemRequest): Promise<boolean> => {
@@ -192,7 +192,8 @@ export const useCart = () => {
   // Load cart on mount and auth changes
   useEffect(() => {
     fetchCart();
-  }, [fetchCart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   return {
     cart,

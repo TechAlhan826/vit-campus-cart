@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { APIResponse } from '@/types';
+import axios, { AxiosRequestConfig } from 'axios';
 
 interface UseApiOptions {
   showSuccessToast?: boolean;
@@ -23,32 +24,23 @@ export const useApi = <T = any>(options: UseApiOptions = {}) => {
 
   const execute = useCallback(async (
     url: string,
-    config: RequestInit = {}
+    config: AxiosRequestConfig = {}
   ): Promise<APIResponse<T> | null> => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(url, {
-        credentials: 'include',
+      const response = await axios({
+        url,
+        withCredentials: true,
         headers: {
           'Content-Type': 'application/json',
-          ...config.headers,
+          ...(config.headers || {}),
         },
         ...config,
       });
 
-      let data: APIResponse<T>;
-      
-      try {
-        data = await response.json();
-      } catch (parseError) {
-        throw new Error('Invalid response format');
-      }
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || `HTTP ${response.status}`);
-      }
+      const data: APIResponse<T> = response.data;
 
       if (data.success) {
         if (showSuccessToast && successMessage) {
@@ -61,8 +53,8 @@ export const useApi = <T = any>(options: UseApiOptions = {}) => {
       } else {
         throw new Error(data.message || data.error || 'Operation failed');
       }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Network error occurred';
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Network error occurred';
       setError(errorMsg);
 
       if (showErrorToast) {
@@ -74,7 +66,7 @@ export const useApi = <T = any>(options: UseApiOptions = {}) => {
       }
 
       // Handle authentication errors
-      if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
+      if (err?.response?.status === 401 || errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
         window.location.href = '/auth/login';
       }
 
@@ -84,24 +76,18 @@ export const useApi = <T = any>(options: UseApiOptions = {}) => {
     }
   }, [toast, showSuccessToast, showErrorToast, successMessage, errorMessage]);
 
-  const get = useCallback((url: string) => execute(url), [execute]);
-  
-  const post = useCallback((url: string, data?: any) => 
-    execute(url, {
-      method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    }), [execute]);
-  
-  const put = useCallback((url: string, data?: any) => 
-    execute(url, {
-      method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    }), [execute]);
-  
-  const del = useCallback((url: string) => 
-    execute(url, { method: 'DELETE' }), [execute]);
+  const get = useCallback((url: string, config?: AxiosRequestConfig) => execute(url, { method: 'GET', ...(config || {}) }), [execute]);
 
-  return {
+  const post = useCallback((url: string, data?: any, config?: AxiosRequestConfig) =>
+    execute(url, { method: 'POST', data, ...(config || {}) }), [execute]);
+
+  const put = useCallback((url: string, data?: any, config?: AxiosRequestConfig) =>
+    execute(url, { method: 'PUT', data, ...(config || {}) }), [execute]);
+
+  const del = useCallback((url: string, config?: AxiosRequestConfig) =>
+    execute(url, { method: 'DELETE', ...(config || {}) }), [execute]);
+
+  return useMemo(() => ({
     loading,
     error,
     execute,
@@ -109,5 +95,5 @@ export const useApi = <T = any>(options: UseApiOptions = {}) => {
     post,
     put,
     delete: del,
-  };
+  }), [loading, error, execute, get, post, put, del]);
 };
