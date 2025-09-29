@@ -45,7 +45,7 @@ export const Header: React.FC = () => {
               alt="UniCart"
               className="h-8 w-8"
             />
-            <span className="font-bold text-xl text-campus gradient-primary">
+            <span className="font-bold text-xl text-campus gradient-secondary">
               UniCart
             </span>
           </Link>

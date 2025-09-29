@@ -74,7 +74,7 @@ const Register = () => {
         <CardHeader className="space-y-6 text-center">
           <div className="flex items-center justify-center space-x-2">
             <img src={unicartLogo} alt="UniCart" className="h-8 w-8" />
-            <span className="font-bold text-2xl gradient-primary">UniCart</span>
+            <span className="font-bold text-2xl gradient-secondary">UniCart</span>
           </div>
           <CardTitle className="text-2xl font-bold">Join VIT Community</CardTitle>
           <p className="text-text-secondary">Create your account to start buying and selling</p>

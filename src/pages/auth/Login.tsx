@@ -26,7 +26,7 @@ const Login = () => {
   const from = (location.state as any)?.from?.pathname || '/';
 
   function goGoogle() {
-    window.location.href = '/api/auth/google'; // proxy to backend
+    window.location.href = `${import.meta.env.VITE_BACKEND_URL}/api/auth/google`; // proxy to backend
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,7 +57,7 @@ const Login = () => {
         <CardHeader className="space-y-6 text-center">
           <div className="flex items-center justify-center space-x-2">
             <img src={unicartLogo} alt="UniCart" className="h-8 w-8" />
-            <span className="font-bold text-2xl gradient-primary">UniCart</span>
+            <span className="font-bold text-2xl gradient-secondary">UniCart</span>
           </div>
           <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
           <p className="text-text-secondary">Sign in to your VIT UniCart account</p>
