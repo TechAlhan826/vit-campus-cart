@@ -42,7 +42,8 @@ export const createProductSchema = z.object({
   category: z.string().min(1, 'Please select a category'),
   condition: z.enum(['new', 'used']),
   stock: z.number().min(1, 'Stock must be at least 1'),
-  images: z.array(z.string().url()).min(1, 'At least one image is required'),
+  // Accept both URLs and base64 strings (data:image/...)
+  images: z.array(z.string()).min(1, 'At least one image is required').optional(),
   tags: z.array(z.string()).optional(),
 });
 

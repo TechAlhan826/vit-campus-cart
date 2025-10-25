@@ -20,14 +20,26 @@ export const useCart = () => {
     }
 
     setLoading(true);
-    const response = await api.get('/api/cart');
-    if (response?.success && response.data) {
-      setCart(response.data);
-    } else {
+    try {
+      const response = await api.get('/api/cart');
+      const data = response?.data?.data || response?.data;
+      const cartData = data?.cart || data;
+      
+      console.log('[useCart] Fetched cart:', { response, data, cartData });
+      
+      if (cartData && cartData.id) {
+        setCart(cartData);
+      } else {
+        // Cart might be empty or not created yet
+        setCart(null);
+      }
+    } catch (error) {
+      console.error('[useCart] Failed to fetch cart:', error);
       setCart(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, api]);
 
   // Add item to cart
   const addItem = useCallback(async (request: AddCartItemRequest): Promise<boolean> => {
@@ -40,61 +52,38 @@ export const useCart = () => {
       return false;
     }
 
-    // Optimistic update
-    const optimisticUpdate = (prevCart: Cart | null) => {
-      if (!prevCart) {
-        return {
-          id: 'temp',
-          userId: 'temp',
-          items: [],
-          total: 0,
-          itemCount: 0,
-          updatedAt: new Date(),
-        };
-      }
-
-      const existingItem = prevCart.items.find(item => item.productId === request.productId);
-      
-      if (existingItem) {
-        return {
-          ...prevCart,
-          items: prevCart.items.map(item =>
-            item.productId === request.productId
-              ? { ...item, quantity: item.quantity + request.quantity }
-              : item
-          ),
-        };
-      } else {
-        // Note: We don't have the full product data here for optimistic update
-        // In a real app, you might want to pass the product data or fetch it first
-        return prevCart;
-      }
-    };
-
-    const originalCart = cart;
-    setCart(optimisticUpdate);
-
     try {
+      console.log('[useCart] Adding item to cart:', request);
       const response = await api.post('/api/cart/add', request);
       
-      if (response?.success && response.data) {
-        setCart(response.data);
+      console.log('[useCart] Add item response:', response);
+      
+      if (response?.success) {
+        // Fetch fresh cart data after successful add
+        await fetchCart();
         toast({
           title: "Added to cart",
           description: "Item has been added to your cart",
         });
         return true;
       } else {
-        // Rollback optimistic update
-        setCart(originalCart);
+        toast({
+          title: "Failed to add item",
+          description: "Could not add item to cart",
+          variant: "destructive",
+        });
         return false;
       }
     } catch (error) {
-      // Rollback optimistic update
-      setCart(originalCart);
+      console.error('[useCart] Add item error:', error);
+      toast({
+        title: "Failed to add item",
+        description: "Could not add item to cart",
+        variant: "destructive",
+      });
       return false;
     }
-  }, [api, isAuthenticated, toast, cart]);
+  }, [api, isAuthenticated, toast, fetchCart]);
 
   // Update item quantity
   const updateItem = useCallback(async (request: UpdateCartItemRequest): Promise<boolean> => {

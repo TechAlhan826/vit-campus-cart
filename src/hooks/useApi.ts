@@ -1,7 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { APIResponse } from '@/types';
-import axios, { AxiosRequestConfig } from 'axios';
+import axios from '@/lib/axios';
+import { AxiosRequestConfig } from 'axios';
 
 interface UseApiOptions {
   showSuccessToast?: boolean;
@@ -30,14 +31,15 @@ export const useApi = <T = any>(options: UseApiOptions = {}) => {
     setError(null);
 
     try {
+      // Use relative URL paths to ensure Vite proxy intercepts in dev mode
+      // e.g., '/api/products' will be proxied to http://localhost:5000/api/products
       const response = await axios({
-        url,
-        withCredentials: true,
+        ...config,
+        url, // Must be relative path like '/api/...'
         headers: {
           'Content-Type': 'application/json',
           ...(config.headers || {}),
         },
-        ...config,
       });
 
       const data: APIResponse<T> = response.data;
@@ -51,10 +53,25 @@ export const useApi = <T = any>(options: UseApiOptions = {}) => {
         }
         return data;
       } else {
-        throw new Error(data.message || data.error || 'Operation failed');
+        // Backend returned success: false
+        const errorMsg = data.message || data.error || 'Operation failed';
+        throw new Error(errorMsg);
       }
     } catch (err: any) {
-      const errorMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Network error occurred';
+      // Extract meaningful error message from backend
+      let errorMsg = 'Network error occurred';
+      
+      if (err?.response?.data) {
+        // Backend sent structured error
+        errorMsg = err.response.data.msg || 
+                   err.response.data.message || 
+                   err.response.data.error || 
+                   err.response.data.errors?.[0]?.msg ||
+                   `Error ${err.response.status}: ${err.response.statusText}`;
+      } else if (err?.message) {
+        errorMsg = err.message;
+      }
+
       setError(errorMsg);
 
       if (showErrorToast) {
@@ -65,11 +82,10 @@ export const useApi = <T = any>(options: UseApiOptions = {}) => {
         });
       }
 
-      // Handle authentication errors
-      if (err?.response?.status === 401 || errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
-        window.location.href = '/auth/login';
-      }
-
+      // DON'T auto-redirect on 401 - let AuthContext handle it
+      // The AuthContext already checks token validity on mount
+      // Auto-redirecting here causes premature logouts
+      
       return null;
     } finally {
       setLoading(false);

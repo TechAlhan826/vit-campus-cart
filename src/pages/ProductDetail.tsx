@@ -47,43 +47,12 @@ const ProductDetail = () => {
       
       if (response?.success && response.data) {
         setProduct(response.data);
+      } else {
+        setProduct(null);
       }
     } catch (error) {
       console.error('Error fetching product:', error);
-      // Mock data for demo
-      setProduct({
-        id: id || '1',
-        title: 'Digital Signal Processing by Proakis & Manolakis',
-        description: `Comprehensive textbook covering digital signal processing fundamentals. Third edition with excellent explanations and examples. Used for only one semester, minimal wear and tear. All chapters are intact with clear diagrams and formulas.
-
-        Features:
-        • Complete coverage of DSP theory
-        • Practical examples and exercises
-        • MATLAB implementations included
-        • Clear diagrams and illustrations
-        • No missing pages or damage`,
-        price: 450,
-        images: [
-          'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800',
-          'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=800',
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800'
-        ],
-        category: 'Textbooks & Study Materials',
-        condition: 'used',
-        stock: 1,
-        sellerId: 'seller1',
-        seller: {
-          id: 'seller1',
-          name: 'Rahul Kumar',
-          verified: true,
-          rating: 4.8
-        },
-        featured: false,
-        status: 'active',
-        tags: ['textbook', 'engineering', 'dsp', 'proakis'],
-        createdAt: new Date('2024-01-15'),
-        updatedAt: new Date('2024-01-15'),
-      });
+      setProduct(null);
     } finally {
       setLoading(false);
     }
@@ -334,7 +303,7 @@ const ProductDetail = () => {
                 <div>{product.category}</div>
                 
                 <div className="text-text-secondary">Listed on</div>
-                <div>{product.createdAt.toLocaleDateString()}</div>
+                <div>{new Date(product.createdAt).toLocaleDateString()}</div>
                 
                 <div className="text-text-secondary">Product ID</div>
                 <div className="font-mono text-xs">{product.id}</div>

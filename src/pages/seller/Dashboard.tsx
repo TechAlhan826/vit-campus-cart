@@ -29,37 +29,15 @@ const SellerDashboard = () => {
   }, []);
 
   const fetchSellerProducts = async () => {
+    setLoading(true);
     try {
-      const response = await api.get('/api/products?sellerId=me');
-      if (response?.success) {
-        setProducts(response.data?.items || []);
-      }
+      const response = await api.get('/api/products/seller/me');
+      const data = response?.data?.data || response?.data;
+      const productList = data?.products || (Array.isArray(data) ? data : []);
+      setProducts(productList);
     } catch (error) {
-      // Mock data for demo
-      setProducts([
-        {
-          id: '1',
-          title: 'Digital Signal Processing Textbook',
-          description: 'Excellent condition textbook',
-          price: 450,
-          images: ['https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400'],
-          category: 'Textbooks & Study Materials',
-          condition: 'used',
-          stock: 1,
-          sellerId: user?.id || 'seller1',
-          seller: {
-            id: user?.id || 'seller1',
-            name: user?.name || 'You',
-            verified: true,
-            rating: 4.8
-          },
-          featured: false,
-          status: 'active',
-          tags: ['textbook', 'engineering'],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }
-      ]);
+      console.error('Failed to fetch products:', error);
+      setProducts([]);
     } finally {
       setLoading(false);
     }

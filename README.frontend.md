@@ -1,5 +1,153 @@
 
-# UniCart Frontend - Production-Ready VIT Campus Marketplace
+# 🚀 Quick Start Guide - Frontend & Backend Sync
+
+## Prerequisites
+- ✅ Node.js installed
+- ✅ Backend running on `http://localhost:5000`
+- ✅ All backend routes at `/api/*` (e.g., `/api/auth/login`)
+
+---
+
+## Step 1: Start Frontend
+
+```bash
+# Install dependencies (if not done)
+npm install
+
+# Start Vite dev server
+npm run dev
+```
+
+Frontend will run on: **http://localhost:5173**
+
+---
+
+## Step 2: Verify Backend CORS
+
+Your Express backend **MUST** have this CORS configuration:
+
+```javascript
+const cors = require('cors');
+
+app.use(cors({
+  origin: 'http://localhost:5173',  // Vite frontend
+  credentials: true,  // Important for cookies/auth
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+```
+
+---
+
+## Step 3: Backend Error Responses
+
+**Always return meaningful errors:**
+
+```javascript
+// ✅ CORRECT
+res.status(401).json({
+  success: false,
+  msg: "Password is incorrect"  // User sees exactly this
+});
+
+// ❌ WRONG
+res.status(401).json({
+  success: false,
+  message: "Unauthorized"  // Too vague
+});
+```
+
+---
+
+## Step 4: Test Login
+
+1. Open **http://localhost:5173/auth/login**
+2. Try to login
+3. If error occurs, you'll see **exact error message** from backend
+4. Check browser console for detailed logs
+
+---
+
+## Step 5: Common Issues
+
+### "Network Error" or "ERR_CONNECTION_REFUSED"
+**Problem**: Backend not running  
+**Solution**: Start your backend on port 5000
+
+### "404 Not Found on /api/auth/login"
+**Problem**: Backend route not at `/api/auth/login`  
+**Solution**: Add `/api` prefix to all backend routes
+
+### "CORS Error"
+**Problem**: Backend CORS not configured  
+**Solution**: Add CORS middleware (see Step 2)
+
+### Generic error "Unauthorized"
+**Problem**: Backend not returning specific `msg` field  
+**Solution**: Update error responses to include `msg: "specific error"`
+
+---
+
+## API Call Examples
+
+### Frontend Code
+```typescript
+// Login
+const response = await api.post('/api/auth/login', {
+  email: 'user@vit.ac.in',
+  password: 'password123'
+});
+
+// Get products
+const products = await api.get('/api/products?category=electronics');
+
+// Add to cart
+const cart = await api.post('/api/cart/add', {
+  productId: '123',
+  quantity: 1
+});
+```
+
+### What Happens
+1. Frontend sends to `/api/auth/login`
+2. Vite proxy forwards to `http://localhost:5000/api/auth/login`
+3. Backend processes and returns response
+4. Frontend shows error/success toast with message
+
+---
+
+## Environment Variables
+
+Create `.env` file in frontend root:
+
+```properties
+VITE_BACKEND_URL=http://localhost:5000
+VITE_RAZORPAY_KEY_ID=your_razorpay_key_here
+```
+
+---
+
+## Success Indicators
+
+✅ **Login works** - No CORS errors, shows "Welcome back!" toast  
+✅ **Products load** - No 404 errors, products display  
+✅ **Cart works** - Add/remove items without errors  
+✅ **Error messages** - Shows specific errors like "Password is incorrect"  
+✅ **Console clean** - No red errors in browser console  
+
+---
+
+## Need Help?
+
+1. Check browser console (F12)
+2. Check Vite terminal logs
+3. Check backend terminal logs
+4. Read `FIXES_SUMMARY.md` for detailed info
+5. Read `BACKEND_ERROR_GUIDE.md` for error message format
+
+---
+
+**Everything is configured perfectly. Just ensure your backend follows the specs!** 🎉
 
 ## Overview
 UniCart is a campus-specific e-commerce platform designed exclusively for the VIT (Vellore Institute of Technology) community. Built by DataXplorers team, it provides a secure, trusted marketplace for students, faculty, and campus vendors.

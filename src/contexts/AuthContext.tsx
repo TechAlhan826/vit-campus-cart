@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import axios from 'axios';
+import axios from '@/lib/axios';
 import { useToast } from '@/hooks/use-toast';
 import { User, LoginRequest, RegisterRequest } from '@/types';
 
@@ -24,7 +24,7 @@ export const useAuth = () => {
   return ctx;
 };
 
-const LOCAL_TOKEN_KEY = 'unicart_token';
+const LOCAL_TOKEN_KEY = 'token'; // Match backend cookie/localStorage key
 
 // small helper: apply token to axios default header
 function applyToken(token?: string | null) {
@@ -47,68 +47,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkAuthStatus = async () => {
     setLoading(true);
-    try {
-      const token = localStorage.getItem(LOCAL_TOKEN_KEY);
-      if (token) {
-        applyToken(token);
-  const resp = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/auth/me`); // uses Authorization header
-        if (resp.data?.user) {
-          setUser(resp.data.user);
-          return;
-        }
-        // fallback: clear invalid token
-        localStorage.removeItem(LOCAL_TOKEN_KEY);
-        applyToken(null);
-      }
-
-      // try cookie-based session (credentials: include)
+    const token = localStorage.getItem(LOCAL_TOKEN_KEY);
+    
+    if (!token) {
+      // No token, try cookie-based auth
       try {
-  const resp2 = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/auth/me`, { withCredentials: true });
-        if (resp2.data?.user) {
-          setUser(resp2.data.user);
+        const resp = await axios.get('/api/auth/me');
+        const userData = resp.data?.data?.user || resp.data?.user || resp.data?.data || resp.data;
+        if (userData && userData.id) {
+          setUser(userData);
+        } else {
+          setUser(null);
         }
       } catch {
         setUser(null);
       }
-    } catch (err) {
-      console.error('checkAuthStatus error', err);
-      setUser(null);
-    } finally {
       setLoading(false);
+      return;
     }
+
+    // Token exists - verify it and set user data
+    applyToken(token);
+    try {
+      const resp = await axios.get('/api/auth/me');
+      const userData = resp.data?.data?.user || resp.data?.user || resp.data?.data || resp.data;
+      
+      if (userData && userData.id) {
+        setUser(userData);
+      } else {
+        // Token exists but no valid user data - token might be invalid
+        localStorage.removeItem(LOCAL_TOKEN_KEY);
+        applyToken(null);
+        setUser(null);
+      }
+    } catch (err: any) {
+      console.error('[AuthContext] checkAuthStatus error:', err);
+      
+      // CRITICAL: Only clear auth on explicit authentication failures
+      // Instagram-level persistence: Keep user logged in through network errors
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        // Token is invalid/expired - clear it
+        console.log('[AuthContext] Auth token invalid/expired - clearing');
+        localStorage.removeItem(LOCAL_TOKEN_KEY);
+        applyToken(null);
+        setUser(null);
+      } else {
+        // Network error, 500, or other transient errors
+        // Keep token and try to maintain session
+        console.log('[AuthContext] Non-auth error - maintaining session');
+        // Keep user logged in with cached token
+        // Don't call setUser(null) - this is key to Instagram-level persistence
+      }
+    }
+    
+    setLoading(false);
   };
 
   const login = async (credentials: LoginRequest): Promise<boolean> => {
     setLoading(true);
     try {
-      // prefer proxy path; backend may return { token, user } or set cookie
-  const resp = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/login`, credentials, { withCredentials: true });
-      const { token, user: u } = resp.data || {};
+      const resp = await axios.post('/api/auth/login', credentials);
+      
+      // Backend returns: {success: true, data: {token, user}}
+      const responseData = resp.data?.data || resp.data;
+      const token = responseData?.token;
+      const u = responseData?.user;
 
       if (token) {
         localStorage.setItem(LOCAL_TOKEN_KEY, token);
         applyToken(token);
-      } else {
-        // ensure no stale token header
-        applyToken(null);
       }
 
-      if (u) setUser(u);
+      if (u && u.id) {
+        setUser(u);
+      } else if (token) {
+        // Token exists but no user - fetch from /me
+        await checkAuthStatus();
+      }
+      
       toast({ title: 'Welcome back!', description: u?.name || 'Logged in' });
+      setLoading(false);
       return true;
     } catch (err: any) {
       console.error('login error', err);
-      toast({ title: 'Login failed', description: err.response?.data?.msg || err.message || 'Invalid credentials', variant: 'destructive' });
-      return false;
-    } finally {
+      const errorMsg = err.response?.data?.msg || 
+                       err.response?.data?.message || 
+                       err.response?.data?.error || 
+                       err.message || 
+                       'Invalid credentials';
+      toast({ 
+        title: 'Login failed', 
+        description: errorMsg, 
+        variant: 'destructive' 
+      });
       setLoading(false);
+      return false;
     }
   };
 
   const register = async (data: RegisterRequest): Promise<boolean> => {
     setLoading(true);
     try {
-  const resp = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/register`, data, { withCredentials: true });
+      const resp = await axios.post('/api/auth/register', data);
       const { token, user: u } = resp.data || {};
       if (token) {
         localStorage.setItem(LOCAL_TOKEN_KEY, token);
@@ -119,7 +159,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (err: any) {
       console.error('register error', err);
-      toast({ title: 'Registration failed', description: err.response?.data?.msg || err.message || 'Unable to register', variant: 'destructive' });
+      const errorMsg = err.response?.data?.msg || 
+                       err.response?.data?.message || 
+                       err.response?.data?.error || 
+                       err.message || 
+                       'Unable to register';
+      toast({ 
+        title: 'Registration failed', 
+        description: errorMsg, 
+        variant: 'destructive' 
+      });
       return false;
     } finally {
       setLoading(false);
@@ -129,7 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       // best-effort server logout (clears cookie) and local cleanup
-  await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/logout`, {}, { withCredentials: true });
+      await axios.post('/api/auth/logout', {});
     } catch (err) {
       console.error('logout error', err);
     } finally {
@@ -142,17 +191,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProfile = async (data: Partial<User>): Promise<boolean> => {
     try {
-  const resp = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/auth/profile`, data, { withCredentials: true });
+      const resp = await axios.put('/api/auth/profile', data);
       if (resp.data?.user) {
         setUser(resp.data.user);
         toast({ title: 'Profile updated', description: 'Saved' });
         return true;
       }
-      toast({ title: 'Update failed', description: resp.data?.msg || 'Unable to update', variant: 'destructive' });
+      const errorMsg = resp.data?.msg || resp.data?.message || 'Unable to update';
+      toast({ title: 'Update failed', description: errorMsg, variant: 'destructive' });
       return false;
-    } catch (err) {
+    } catch (err: any) {
       console.error('updateProfile', err);
-      toast({ title: 'Update failed', description: 'Network error', variant: 'destructive' });
+      const errorMsg = err.response?.data?.msg || 
+                       err.response?.data?.message || 
+                       err.response?.data?.error || 
+                       'Network error';
+      toast({ title: 'Update failed', description: errorMsg, variant: 'destructive' });
       return false;
     }
   };

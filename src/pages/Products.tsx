@@ -54,65 +54,26 @@ const Products = () => {
     };
 
     try {
-      const response = await api.get(`${import.meta.env.VITE_BACKEND_URL}/api/products?${new URLSearchParams(
+      // Build query params properly
+      const params = new URLSearchParams(
         Object.entries(query).reduce((acc, [key, value]) => {
           if (value !== undefined) acc[key] = String(value);
           return acc;
         }, {} as Record<string, string>)
-      )}`);
+      );
+      
+      const queryString = params.toString();
+      const url = queryString ? `/api/products?${queryString}` : '/api/products';
+      
+      const response = await api.get(url);
 
-      if (response?.success && response.data) {
-        setProducts(response.data.items || []);
-      }
+      // Backend returns: {success: true, data: {products: []}}
+      const data = response?.data?.data || response?.data;
+      const productList = data?.products || data?.items || (Array.isArray(data) ? data : []);
+      setProducts(productList);
     } catch (error) {
       console.error('Error fetching products:', error);
-      // Mock data for demo
-      setProducts([
-        {
-          id: '1',
-          title: 'Digital Signal Processing by Proakis',
-          description: 'Third edition, excellent condition. Used for one semester only.',
-          price: 450,
-          images: ['https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400'],
-          category: 'Textbooks & Study Materials',
-          condition: 'used',
-          stock: 1,
-          sellerId: 'seller1',
-          seller: {
-            id: 'seller1',
-            name: 'Rahul Kumar',
-            verified: true,
-            rating: 4.8
-          },
-          featured: false,
-          status: 'active',
-          tags: ['textbook', 'engineering', 'dsp'],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: '2',
-          title: 'HP Laptop - Core i5, 8GB RAM',
-          description: 'Excellent gaming and programming laptop. Barely used, all accessories included.',
-          price: 35000,
-          images: ['https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400'],
-          category: 'Electronics & Gadgets',
-          condition: 'used',
-          stock: 1,
-          sellerId: 'seller2',
-          seller: {
-            id: 'seller2',
-            name: 'Priya Sharma',
-            verified: true,
-            rating: 4.9
-          },
-          featured: true,
-          status: 'active',
-          tags: ['laptop', 'hp', 'gaming'],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ]);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -120,7 +81,8 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [searchQuery, selectedCategory, priceRange, condition, sortBy]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, selectedCategory, priceRange[0], priceRange[1], condition, sortBy]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

@@ -112,21 +112,33 @@ const categories = [
 
   const onSubmit = async (data: CreateProductFormData) => {
     try {
-  const response = await api.post(`${import.meta.env.VITE_BACKEND_URL}/api/products/create`, {
+      console.log('Creating product with data:', { ...data, images, tags });
+      
+      // Backend expects POST /api/products/create
+      const response = await api.post('/api/products/create', {
         ...data,
         images,
         tags,
       });
 
-      if (response?.success) {
+      console.log('Create product response:', response);
+
+      if (response?.success || response?.data) {
         toast({
           title: "Product created",
           description: "Your product has been listed successfully",
         });
         navigate('/seller/products');
+      } else {
+        throw new Error('No success response');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Create product error:', error);
+      toast({
+        title: "Failed to create product",
+        description: error?.response?.data?.message || error?.message || 'An error occurred',
+        variant: 'destructive',
+      });
     }
   };
 

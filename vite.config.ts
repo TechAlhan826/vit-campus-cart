@@ -10,25 +10,9 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       host: "::", // IPv6-tolerant; toggle to 'localhost' for isolation.
-      port: 5173, // Vite default; avoids 8080 port mismatch in browsers/SW.
-      cors: mode === 'development' ? true : false, // Dev: Allows localhost origins; secure, no * wildcard.
-      proxy: {
-        '/api': {
-          target: env.VITE_BACKEND_URL, // Backend base; HTTP for dev.
-          changeOrigin: true, // Rewrites Host header for auth/cookies.
-          secure: false, // Disables TLS check for localhost HTTP.
-          rewrite: (path) => path.replace(/^\/api/, ''), // Strips /api; backend sees /auth/login.
-          configure: (proxy, options) => {
-            // Logs proxy flow; remove in prod.
-            proxy.on('proxyReq', (proxyReq, req, res) => {
-              console.log(`[Proxy] ${req.method} ${req.url} -> ${proxyReq.getHeader('host')}`);
-            });
-            proxy.on('error', (err, req, res) => {
-              console.error(`[Proxy Error] ${err.message} for ${req.url}`);
-            });
-          },
-        },
-      },
+      port: 5173, // Vite default
+      cors: true, // Enable CORS for cross-origin backend requests
+      // No proxy needed - axios uses VITE_BACKEND_URL directly
     },
     plugins: [
       react(),

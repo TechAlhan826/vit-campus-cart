@@ -26,7 +26,8 @@ const Login = () => {
   const from = (location.state as any)?.from?.pathname || '/';
 
   function goGoogle() {
-    window.location.href = `${import.meta.env.VITE_BACKEND_URL}/api/auth/google`; // proxy to backend
+    // Redirect to backend Google OAuth - backend is on port 5000
+    window.location.href = `${import.meta.env.VITE_BACKEND_URL}/api/auth/google`;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -11,12 +11,15 @@ import { Badge } from '@/components/ui/badge';
 import { MessageCircle, Plus, Clock, CheckCircle } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { supportTicketSchema, SupportTicketFormData } from '@/lib/validations';
 import { SupportTicket } from '@/types';
 
 const Support = () => {
   const [activeTab, setActiveTab] = useState<'create' | 'tickets'>('tickets');
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { isAuthenticated } = useAuth();
   const api = useApi();
   const { toast } = useToast();
 
@@ -31,6 +34,29 @@ const Support = () => {
     defaultValues: { priority: 'medium' }
   });
 
+  // Fetch tickets on mount
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchTickets();
+    }
+  }, [isAuthenticated]);
+
+  const fetchTickets = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/api/support/tickets');
+      const data = response?.data?.data || response?.data;
+      const ticketList = data?.tickets || (Array.isArray(data) ? data : []);
+      setTickets(ticketList);
+    } catch (error) {
+      console.error('Failed to fetch support tickets:', error);
+      // Don't show error toast, just keep empty array
+      setTickets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const onSubmit = async (data: SupportTicketFormData) => {
     try {
       const response = await api.post('/api/support/create', data);
@@ -42,18 +68,8 @@ const Support = () => {
         });
         reset();
         setActiveTab('tickets');
-        // Add mock ticket for demo
-        const newTicket: SupportTicket = {
-          id: Date.now().toString(),
-          userId: 'user1',
-          title: data.title,
-          description: data.description,
-          status: 'open',
-          priority: data.priority,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        setTickets(prev => [newTicket, ...prev]);
+        // Refresh tickets list
+        await fetchTickets();
       }
     } catch (error) {
       console.error('Create ticket error:', error);
@@ -168,7 +184,14 @@ const Support = () => {
 
         {activeTab === 'tickets' && (
           <div className="space-y-4">
-            {tickets.length === 0 ? (
+            {loading ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4 animate-pulse" />
+                  <p className="text-text-secondary">Loading tickets...</p>
+                </CardContent>
+              </Card>
+            ) : tickets.length === 0 ? (
               <Card>
                 <CardContent className="p-12 text-center">
                   <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -202,7 +225,7 @@ const Support = () => {
                         <div className="flex items-center gap-4 text-sm text-text-muted">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {ticket.createdAt.toLocaleDateString()}
+                            {new Date(ticket.createdAt).toLocaleDateString()}
                           </span>
                           <span>Ticket #{ticket.id}</span>
                         </div>

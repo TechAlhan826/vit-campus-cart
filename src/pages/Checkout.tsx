@@ -147,19 +147,23 @@ const Checkout = () => {
     setIsProcessing(true);
 
     try {
-      // Create order
+      // Create order - Backend expects POST /api/orders/create
       const orderResponse = await api.post('/api/orders/create', {
-        cartId: cart.id,
+        items: cart.items,
         shippingAddress: addressData,
         paymentMethod,
         couponCode: appliedCoupon,
+        totalAmount: total,
       });
 
-      if (!orderResponse?.success || !orderResponse.data) {
-        throw new Error('Failed to create order');
+      console.log('Order creation response:', orderResponse);
+
+      if (!orderResponse?.success && !orderResponse?.data) {
+        throw new Error(orderResponse?.message || 'Failed to create order');
       }
 
-      const { orderId, amount, currency, razorpayOrderId } = orderResponse.data;
+      const orderData = orderResponse?.data || orderResponse;
+      const { orderId, amount, currency, razorpayOrderId } = orderData;
 
       if (paymentMethod === 'cod') {
         // Handle COD

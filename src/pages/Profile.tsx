@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,12 +20,17 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useApi } from '@/hooks/useApi';
+import { Order } from '@/types';
 
 const Profile = () => {
   const { user, updateProfile, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const api = useApi();
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -34,6 +39,108 @@ const Profile = () => {
     collegeRoll: user?.profile?.collegeRoll || '',
     hostel: user?.profile?.hostel || '',
   });
+
+  // Fetch real orders from API
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchOrders();
+    }
+  }, [isAuthenticated]);
+
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const response = await api.get('/api/orders');
+      const data = response?.data?.data || response?.data;
+      const orderList = data?.orders || (Array.isArray(data) ? data : []);
+      setOrders(orderList);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const handleVerifyAccount = async () => {
+    toast({
+      title: "Verification email sent",
+      description: "Please check your VIT email to verify your account",
+    });
+    // TODO: Implement backend verification endpoint
+  };
+
+  const handleBecomeSellerUpgrade = async () => {
+    if (user?.role === 'seller' || user?.role === 'admin') {
+      toast({
+        title: "Already a seller",
+        description: "Your account already has seller privileges",
+      });
+      return;
+    }
+
+    if (!window.confirm('Do you want to upgrade to a seller account? This will allow you to list and sell products.')) {
+      return;
+    }
+
+    try {
+      const response = await api.put('/api/auth/upgrade-to-seller', {});
+      if (response?.success) {
+        toast({
+          title: "Success!",
+          description: "Your account has been upgraded to seller. Please refresh the page.",
+        });
+        setTimeout(() => window.location.reload(), 1500);
+      }
+    } catch (error) {
+      console.error('Seller upgrade error:', error);
+      toast({
+        title: "Upgrade failed",
+        description: "Unable to upgrade account. Please contact support.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleChangePassword = async () => {
+    // For now, show a coming soon message
+    toast({
+      title: "Change Password",
+      description: "Password change functionality will be available soon. Please use Forgot Password from the login page.",
+    });
+    // TODO: Implement password change dialog/modal
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!window.confirm('Are you absolutely sure you want to delete your account? This action cannot be undone.')) {
+      return;
+    }
+
+    if (!window.confirm('This will permanently delete all your data, orders, and listings. Are you really sure?')) {
+      return;
+    }
+
+    try {
+      const response = await api.delete('/api/auth/delete-account');
+      if (response?.success) {
+        toast({
+          title: "Account deleted",
+          description: "Your account has been permanently deleted",
+        });
+        setTimeout(() => {
+          localStorage.clear();
+          window.location.href = '/';
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Delete account error:', error);
+      toast({
+        title: "Delete failed",
+        description: "Unable to delete account. Please contact support.",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -84,24 +191,6 @@ const Profile = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
-
-  // Mock orders data
-  const orders = [
-    {
-      id: 'ORD001',
-      date: '2024-01-15',
-      total: 450,
-      status: 'delivered',
-      items: [{ title: 'Digital Signal Processing', quantity: 1 }]
-    },
-    {
-      id: 'ORD002', 
-      date: '2024-01-10',
-      total: 1200,
-      status: 'processing',
-      items: [{ title: 'Scientific Calculator', quantity: 1 }]
-    }
-  ];
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -293,7 +382,12 @@ const Profile = () => {
               </CardHeader>
               
               <CardContent className="p-0">
-                {orders.length === 0 ? (
+                {ordersLoading ? (
+                  <div className="text-center py-12">
+                    <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4 animate-pulse" />
+                    <p className="text-text-secondary">Loading orders...</p>
+                  </div>
+                ) : orders.length === 0 ? (
                   <div className="text-center py-12">
                     <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                     <h3 className="text-lg font-semibold mb-2">No orders yet</h3>
@@ -311,9 +405,9 @@ const Profile = () => {
                         <CardContent className="p-0">
                           <div className="flex justify-between items-start mb-3">
                             <div>
-                              <h4 className="font-semibold">Order #{order.id}</h4>
+                              <h4 className="font-semibold">Order #{order.id.slice(-8)}</h4>
                               <p className="text-sm text-text-secondary">
-                                Placed on {new Date(order.date).toLocaleDateString()}
+                                Placed on {new Date(order.createdAt).toLocaleDateString()}
                               </p>
                             </div>
                             <div className="text-right">
@@ -325,11 +419,16 @@ const Profile = () => {
                           <Separator className="my-3" />
                           
                           <div className="space-y-1">
-                            {order.items.map((item, index) => (
+                            {order.cartItems.map((item, index) => (
                               <div key={index} className="text-sm">
-                                <span className="font-medium">{item.quantity}x</span> {item.title}
+                                <span className="font-medium">{item.quantity}x</span> {item.product.title}
                               </div>
                             ))}
+                          </div>
+                          
+                          <div className="mt-3 flex gap-2">
+                            <Badge variant="outline">{order.paymentMethod.toUpperCase()}</Badge>
+                            <Badge variant="outline">{order.paymentStatus}</Badge>
                           </div>
                         </CardContent>
                       </Card>
@@ -358,7 +457,7 @@ const Profile = () => {
                     {user?.verified ? (
                       <Badge className="btn-success">Verified</Badge>
                     ) : (
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={handleVerifyAccount}>
                         Verify Now
                       </Button>
                     )}
@@ -373,10 +472,10 @@ const Profile = () => {
                         Start selling your products on UniCart
                       </p>
                     </div>
-                    {user?.role === 'seller' ? (
+                    {user?.role === 'seller' || user?.role === 'admin' ? (
                       <Badge className="btn-campus">Seller Account</Badge>
                     ) : (
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={handleBecomeSellerUpgrade}>
                         Apply Now
                       </Button>
                     )}
@@ -391,7 +490,7 @@ const Profile = () => {
                         Update your account password
                       </p>
                     </div>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={handleChangePassword}>
                       Change Password
                     </Button>
                   </div>
@@ -405,7 +504,7 @@ const Profile = () => {
                         Permanently delete your UniCart account
                       </p>
                     </div>
-                    <Button variant="destructive" size="sm">
+                    <Button variant="destructive" size="sm" onClick={handleDeleteAccount}>
                       Delete Account
                     </Button>
                   </div>

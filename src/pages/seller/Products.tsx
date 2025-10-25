@@ -37,59 +37,29 @@ const SellerProducts = () => {
   }, []);
 
   const fetchProducts = async () => {
+    setLoading(true);
     try {
-      const response = await api.get(`${import.meta.env.VITE_BACKEND_URL}/api/products?sellerId=me`);
-      if (response?.success) {
-        setProducts(response.data?.items || []);
-      }
+      // Backend doesn't have /api/products/seller/me
+      // Instead, use GET /api/products and filter by current seller
+      const response = await api.get('/api/products');
+      const data = response?.data?.data || response?.data;
+      const allProducts = data?.items || data?.products || (Array.isArray(data) ? data : []);
+      
+      // Filter products created by the current logged-in seller
+      const sellerProducts = allProducts.filter((product: Product) => 
+        product.sellerId === user?.id || product.seller?.id === user?.id
+      );
+      
+      setProducts(sellerProducts);
+      
+      console.log('[SellerProducts] Fetched products:', {
+        total: allProducts.length,
+        sellerProducts: sellerProducts.length,
+        sellerId: user?.id
+      });
     } catch (error) {
-      // Mock data for demo
-      setProducts([
-        {
-          id: '1',
-          title: 'Digital Signal Processing by Proakis',
-          description: 'Third edition textbook in excellent condition',
-          price: 450,
-          images: ['https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400'],
-          category: 'Textbooks & Study Materials',
-          condition: 'used',
-          stock: 1,
-          sellerId: user?.id || 'seller1',
-          seller: {
-            id: user?.id || 'seller1',
-            name: user?.name || 'You',
-            verified: true,
-            rating: 4.8
-          },
-          featured: false,
-          status: 'active',
-          tags: ['textbook', 'engineering'],
-          createdAt: new Date('2024-01-15'),
-          updatedAt: new Date('2024-01-15'),
-        },
-        {
-          id: '2',
-          title: 'HP Laptop - Core i5, 8GB RAM',
-          description: 'Gaming and programming laptop, barely used',
-          price: 35000,
-          images: ['https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=400'],
-          category: 'Electronics & Gadgets',
-          condition: 'used',
-          stock: 1,
-          sellerId: user?.id || 'seller1',
-          seller: {
-            id: user?.id || 'seller1',
-            name: user?.name || 'You',
-            verified: true,
-            rating: 4.8
-          },
-          featured: true,
-          status: 'active',
-          tags: ['laptop', 'gaming'],
-          createdAt: new Date('2024-01-10'),
-          updatedAt: new Date('2024-01-10'),
-        }
-      ]);
+      console.error('Failed to fetch seller products:', error);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -123,7 +93,8 @@ const SellerProducts = () => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     
     try {
-      const response = await api.put(`/api/products/${productId}`, {
+      // Backend expects PUT /api/products/update/:id
+      const response = await api.put(`/api/products/update/${productId}`, {
         status: newStatus
       });
       
@@ -260,7 +231,7 @@ const SellerProducts = () => {
                           <Badge variant="outline">{product.condition}</Badge>
                         </div>
                         <p className="text-sm text-text-secondary">
-                          {product.category} • Listed on {product.createdAt.toLocaleDateString()}
+                          {product.category} • Listed on {new Date(product.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                       

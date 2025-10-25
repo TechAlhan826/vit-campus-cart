@@ -73,9 +73,17 @@ export const Header: React.FC = () => {
             </Link>
             
             {isSeller && (
-              <Link to="/seller" className="text-sm hover:text-primary transition-colors">
-                Sell
-              </Link>
+              <>
+                <Link to="/seller" className="text-sm hover:text-primary transition-colors">
+                  Dashboard
+                </Link>
+                <Link to="/seller/products" className="text-sm hover:text-primary transition-colors">
+                  My Products
+                </Link>
+                <Link to="/seller/products/new" className="text-sm hover:text-primary transition-colors bg-primary text-primary-foreground px-3 py-1.5 rounded-md">
+                  + Add Product
+                </Link>
+              </>
             )}
 
             {isAdmin && (
@@ -129,9 +137,17 @@ export const Header: React.FC = () => {
                     <Link to="/orders">Orders</Link>
                   </DropdownMenuItem>
                   {isSeller && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/seller/products">My Products</Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/seller">Seller Dashboard</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/seller/products">My Products</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/seller/products/new">Add Product</Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
                   <DropdownMenuItem asChild>
                     <Link to="/support">Support</Link>
@@ -208,13 +224,29 @@ export const Header: React.FC = () => {
                     Orders
                   </Link>
                   {isSeller && (
-                    <Link
-                      to="/seller"
-                      className="block py-2 text-sm hover:text-primary transition-colors"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      Seller Dashboard
-                    </Link>
+                    <>
+                      <Link
+                        to="/seller"
+                        className="block py-2 text-sm hover:text-primary transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Seller Dashboard
+                      </Link>
+                      <Link
+                        to="/seller/products"
+                        className="block py-2 text-sm hover:text-primary transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        My Products
+                      </Link>
+                      <Link
+                        to="/seller/products/new"
+                        className="block py-2 text-sm hover:text-primary transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Add Product
+                      </Link>
+                    </>
                   )}
                   {isAdmin && (
                     <Link
