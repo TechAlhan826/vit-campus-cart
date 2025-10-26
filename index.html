@@ -30,10 +30,31 @@
         const cspMeta = document.getElementById('csp-meta');
         if (isDev) {
           // Dev: Allows all localhost ports/protocols for backend/SW.
-          cspMeta.content = "connect-src 'self' http://localhost:* ws://localhost:* api.razorpay.com;";
+          cspMeta.content = "connect-src 'self' http://localhost:* ws://localhost:* https://api.razorpay.com;";
         } else {
-          // Prod: Tight whitelist (update with real API).
-          cspMeta.content = "connect-src 'self' https://api.razorpay.com https://unicart.vit.edu;";
+          // Prod: Allow backend URL from env + Razorpay + any VIT domains
+          // NOTE: VITE_BACKEND_URL is injected at build time by Vite
+          const backendUrl = '__VITE_BACKEND_URL__'; // Placeholder replaced during build
+          const allowedOrigins = [
+            "'self'",
+            "https://api.razorpay.com",
+            "https://*.onrender.com", // Allow Render deployments
+            "https://*.railway.app", // Allow Railway deployments
+            "https://*.vercel.app", // Allow Vercel deployments
+            "https://*.netlify.app", // Allow Netlify deployments
+            "https://tndigitalservices.shop", // Production domain
+            "https://*.vit.edu" // Any VIT subdomains
+          ];
+          
+          // Add the specific backend URL if it's a valid HTTPS URL
+          if (backendUrl && backendUrl.startsWith('https://') && !backendUrl.includes('__VITE_')) {
+            const backendOrigin = new URL(backendUrl).origin;
+            if (!allowedOrigins.includes(backendOrigin)) {
+              allowedOrigins.push(backendOrigin);
+            }
+          }
+          
+          cspMeta.content = "connect-src " + allowedOrigins.join(' ') + ";";
         }
       })();
     </script>
@@ -60,7 +81,7 @@
       "@type": "WebApplication",
       "name": "UniCart",
       "description": "Exclusive marketplace for VIT community",
-      "url": "https://unicart.vit.edu",
+      "url": "https://unicart-web.up.railway.app",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
       "offers": {
@@ -70,12 +91,9 @@
       },
       "creator": {
         "@type": "Organization",
-        "name": "DataXplorers",
+        "name": "TechyAlhan",
         "member": [
-          {"@type": "Person", "name": "Mohammed Alhan N"},
-          {"@type": "Person", "name": "Vivek Joseph Emmanuel"},
-          {"@type": "Person", "name": "Aravind S"},
-          {"@type": "Person", "name": "Nishant G"}
+          {"@type": "Person", "name": "Mohammed Alhan N"}
         ]
       }
     }

@@ -1,7 +1,19 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+
+// Plugin to inject environment variables into index.html at build time
+const htmlEnvInjector = (): Plugin => ({
+  name: 'html-env-injector',
+  transformIndexHtml(html, ctx) {
+    // Only run during build, not dev server
+    if (ctx.server) return html;
+    
+    const backendUrl = process.env.VITE_BACKEND_URL || '';
+    return html.replace('__VITE_BACKEND_URL__', backendUrl);
+  }
+});
 
 
 
@@ -16,6 +28,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      htmlEnvInjector(), // Inject env vars into index.html
       mode === 'development' && componentTagger(), // Dev-only Lovable tagger.
     ].filter(Boolean),
     resolve: {
