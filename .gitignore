@@ -33,3 +33,4 @@ dist-ssr
 # Keep documentation
 *.md
 !README.md
+railway.json
