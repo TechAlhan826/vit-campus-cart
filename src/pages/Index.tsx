@@ -213,7 +213,7 @@ const Index = () => {
               Why Choose UniCart?
             </Badge>
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-              <span className="text-campus gradient-campus/10 rounded-lg">Production-Ready Features</span> 
+              <span className="text-campus gradient-campus/10 rounded-lg">Production-Ready Features </span> 
               for Campus Commerce
             </h2>
             <p className="text-xl text-text-secondary max-w-2xl mx-auto">

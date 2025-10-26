@@ -11,7 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Environment variables (NEVER COMMIT THESE!)
 .env
+.env.local
+.env.production
+.env.development
+.env.*.local
 
 # Editor directories and files
 .vscode/*
@@ -24,5 +30,6 @@ dist-ssr
 *.sln
 *.sw?
 
+# Keep documentation
 *.md
 !README.md
