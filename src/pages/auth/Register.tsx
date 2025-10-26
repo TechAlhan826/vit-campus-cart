@@ -53,6 +53,7 @@ const Register = () => {
         phone: formData.phone,
         role: formData.role,
         collegeRoll: formData.collegeRoll,
+        agreeToTerms: formData.agreeToTerms,
       } as any);
       if (ok) navigate('/');
     } finally {
