@@ -47,6 +47,7 @@ const App = () => (
               <Route path="auth/register" element={<Register />} />
               <Route path="auth/forgot-password" element={<ForgotPassword />} />
               <Route path="auth/reset-password" element={<ResetPassword />} />
+              <Route path="auth/google/callback" element={<Login />} />
               
               {/* Protected Routes */}
               <Route path="cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />

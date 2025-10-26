@@ -52,10 +52,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     const token = localStorage.getItem(LOCAL_TOKEN_KEY);
 
+    console.log('[AuthContext] checkAuthStatus start:', { hasToken: !!token, hasCache: !!userCacheRef.current });
+
     try {
       // First attempt: rely on cookie
       const resp = await axios.get('/api/auth/me');
       const userData = resp.data?.data?.user || resp.data?.user || resp.data?.data || resp.data;
+      
+      console.log('[AuthContext] Cookie auth success:', userData);
       
       if (userData && userData.id) {
         setUser(userData);
@@ -64,12 +68,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
     } catch (err: any) {
+      console.log('[AuthContext] Cookie auth failed:', { status: err.response?.status, message: err.message });
+      
       // If cookie-based check fails, try token fallback if present
       if (token) {
         try {
           applyToken(token);
           const r2 = await axios.get('/api/auth/me');
           const u2 = r2.data?.data?.user || r2.data?.user || r2.data?.data || r2.data;
+          
+          console.log('[AuthContext] Token auth success:', u2);
+          
           if (u2 && u2.id) {
             setUser(u2);
             userCacheRef.current = u2;
@@ -77,25 +86,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
           // token invalid
+          console.log('[AuthContext] Token returned no user, clearing');
           localStorage.removeItem(LOCAL_TOKEN_KEY);
           applyToken(null);
           setUser(null);
           userCacheRef.current = null;
         } catch (err2: any) {
+          console.log('[AuthContext] Token auth failed:', { status: err2.response?.status, message: err2.message });
+          
           if (err2.response?.status === 401 || err2.response?.status === 403) {
+            console.log('[AuthContext] Auth error, clearing session');
             localStorage.removeItem(LOCAL_TOKEN_KEY);
             applyToken(null);
             setUser(null);
             userCacheRef.current = null;
           } else if (userCacheRef.current) {
+            // Non-auth error (network/server) - keep cached session
+            console.log('[AuthContext] Network error, keeping cache:', userCacheRef.current);
             setUser(userCacheRef.current);
+          } else {
+            // No cache, remain logged out
+            console.log('[AuthContext] No cache available, logging out');
+            setUser(null);
           }
         }
       } else if (userCacheRef.current) {
-        // Non-auth error (network/server) - keep prior session to avoid flicker
+        // No token but have cache - keep session for transient errors
+        console.log('[AuthContext] No token, keeping cache:', userCacheRef.current);
         setUser(userCacheRef.current);
       } else {
         // no cache; remain logged out
+        console.log('[AuthContext] No token, no cache, logging out');
         setUser(null);
       }
     }

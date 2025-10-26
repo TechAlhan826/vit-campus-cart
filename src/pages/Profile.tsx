@@ -22,6 +22,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useApi } from '@/hooks/useApi';
 import { Order } from '@/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const Profile = () => {
   const { user, updateProfile, isAuthenticated } = useAuth();
@@ -31,6 +39,13 @@ const Profile = () => {
   const [editMode, setEditMode] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -63,11 +78,25 @@ const Profile = () => {
   };
 
   const handleVerifyAccount = async () => {
-    toast({
-      title: "Verification email sent",
-      description: "Please check your VIT email to verify your account",
-    });
-    // TODO: Implement backend verification endpoint
+    try {
+      setLoading(true);
+      const response = await api.post('/api/auth/verify-email');
+      
+      if (response?.success || response?.data?.success) {
+        toast({
+          title: "Verification email sent",
+          description: "Check your VIT email inbox for the verification link",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to send verification email",
+        description: error?.response?.data?.message || "Please try again later",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBecomeSellerUpgrade = async () => {
@@ -102,13 +131,74 @@ const Profile = () => {
     }
   };
 
-  const handleChangePassword = async () => {
-    // For now, show a coming soon message
-    toast({
-      title: "Change Password",
-      description: "Password change functionality will be available soon. Please use Forgot Password from the login page.",
-    });
-    // TODO: Implement password change dialog/modal
+  const handleChangePassword = () => {
+    setShowPasswordDialog(true);
+  };
+
+  const handlePasswordFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in all password fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "New password and confirm password must match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      const response = await api.post('/api/auth/change-password', {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+
+      if (response?.success || response?.data?.success) {
+        toast({
+          title: "Password changed successfully",
+          description: "Your password has been updated",
+        });
+        setShowPasswordDialog(false);
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to change password",
+        description: error?.response?.data?.message || "Please check your current password and try again",
+        variant: "destructive",
+      });
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -200,13 +290,14 @@ const Profile = () => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
+      pending: { variant: 'secondary' as const, label: 'Pending' },
+      paid: { variant: 'default' as const, label: 'Paid' },
       delivered: { variant: 'default' as const, label: 'Delivered' },
-      processing: { variant: 'secondary' as const, label: 'Processing' },
       shipped: { variant: 'outline' as const, label: 'Shipped' },
       cancelled: { variant: 'destructive' as const, label: 'Cancelled' },
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.processing;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -512,6 +603,69 @@ const Profile = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Change Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
+              Enter your current password and choose a new password
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="currentPassword">Current Password</Label>
+              <Input
+                id="currentPassword"
+                name="currentPassword"
+                type="password"
+                value={passwordForm.currentPassword}
+                onChange={handlePasswordFormChange}
+                placeholder="Enter current password"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                name="newPassword"
+                type="password"
+                value={passwordForm.newPassword}
+                onChange={handlePasswordFormChange}
+                placeholder="Enter new password (min 6 characters)"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                value={passwordForm.confirmPassword}
+                onChange={handlePasswordFormChange}
+                placeholder="Re-enter new password"
+              />
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowPasswordDialog(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" className="btn-hero" disabled={passwordLoading}>
+                {passwordLoading ? 'Changing...' : 'Change Password'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

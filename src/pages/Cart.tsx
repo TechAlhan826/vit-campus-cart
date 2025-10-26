@@ -58,6 +58,8 @@ const Cart = () => {
   }
 
   if (!cart || cart.items.length === 0) {
+    console.log('[Cart] Empty cart state:', { cart, hasCart: !!cart, itemsLength: cart?.items?.length });
+    
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-2 mb-6">
@@ -84,6 +86,8 @@ const Cart = () => {
       </div>
     );
   }
+
+  console.log('[Cart] Rendering cart with items:', cart.items);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -136,14 +140,25 @@ const Cart = () => {
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
-          {cart.items.map((item) => (
+          {cart.items.map((item) => {
+            const product = item.product || {} as any;
+            const images = product.images || [];
+            const title = product.title || 'Unknown Product';
+            const sellerName = product.seller?.name || 'Unknown Seller';
+            const category = product.category || 'Unknown';
+            const condition = product.condition || 'unknown';
+            const stock = product.stock || 0;
+            
+            console.log('[Cart] Rendering item:', { item, product, hasProduct: !!item.product });
+            
+            return (
             <Card key={item.id} className="p-4">
               <CardContent className="p-0">
                 <div className="flex gap-4">
                   <div className="w-20 h-20 rounded-lg overflow-hidden bg-surface flex-shrink-0">
                     <img
-                      src={item.product.images[0] || '/placeholder-product.png'}
-                      alt={item.product.title}
+                      src={images[0] || '/placeholder-product.png'}
+                      alt={title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200';
@@ -155,16 +170,16 @@ const Cart = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <Link
-                          to={`/products/${item.product.id}`}
+                          to={`/products/${product.id || item.productId}`}
                           className="font-medium hover:text-primary transition-colors line-clamp-2"
                         >
-                          {item.product.title}
+                          {title}
                         </Link>
                         <p className="text-sm text-text-secondary mt-1">
-                          Sold by {item.product.seller.name}
+                          Sold by {sellerName}
                         </p>
                         <p className="text-xs text-text-muted capitalize">
-                          {item.product.condition} • {item.product.category}
+                          {condition} • {category}
                         </p>
                       </div>
                       
@@ -193,12 +208,12 @@ const Cart = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleUpdateQuantity(item.productId, item.quantity + 1)}
-                          disabled={item.quantity >= item.product.stock}
+                          disabled={item.quantity >= stock}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
                         <span className="text-sm text-text-secondary">
-                          ({item.product.stock} available)
+                          ({stock} available)
                         </span>
                       </div>
                       
@@ -213,7 +228,7 @@ const Cart = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )})}
         </div>
 
         {/* Order Summary */}

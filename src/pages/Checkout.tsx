@@ -148,30 +148,37 @@ const Checkout = () => {
 
     try {
       // Create order - Backend expects POST /api/orders/create
-      const orderResponse = await api.post('/api/orders/create', {
-        items: cart.items,
+      // Send items array with productId and quantity only (backend will enrich)
+      const orderPayload = {
+        items: cart.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
         shippingAddress: addressData,
         paymentMethod,
-        couponCode: appliedCoupon,
-        totalAmount: total,
-      });
+        couponCode: appliedCoupon || undefined,
+      };
 
-      console.log('Order creation response:', orderResponse);
+      console.log('[Checkout] Creating order with payload:', orderPayload);
+      
+      const orderResponse = await api.post('/api/orders/create', orderPayload);
+
+      console.log('[Checkout] Order creation response:', orderResponse);
 
       if (!orderResponse?.success && !orderResponse?.data) {
-        throw new Error(orderResponse?.message || 'Failed to create order');
+        throw new Error(orderResponse?.message || orderResponse?.error || 'Failed to create order');
       }
 
       const orderData = orderResponse?.data || orderResponse;
-      const { orderId, amount, currency, razorpayOrderId } = orderData;
+      const { orderId, amount, currency, razorpayOrderId, status } = orderData;
 
       if (paymentMethod === 'cod') {
-        // Handle COD
+        // Handle COD - order is created and will be processed
         await clearCart();
-        navigate(`/orders/${orderId}/success`);
+        navigate(`/orders`);
         toast({
           title: "Order placed successfully",
-          description: "You will receive a confirmation shortly",
+          description: `Order #${orderId?.slice(-8) || 'ID'} has been placed. Payment on delivery.`,
         });
         return;
       }
@@ -202,10 +209,10 @@ const Checkout = () => {
 
             if (verifyResponse?.success) {
               await clearCart();
-              navigate(`/orders/${orderId}/success`);
+              navigate(`/orders`);
               toast({
                 title: "Payment successful",
-                description: "Your order has been placed successfully",
+                description: `Order #${orderId?.slice(-8) || 'ID'} has been placed successfully`,
               });
             } else {
               throw new Error('Payment verification failed');

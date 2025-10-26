@@ -19,11 +19,42 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || '/';
+
+  // Handle Google OAuth callback
+  useEffect(() => {
+    if (location.pathname === '/auth/google/callback') {
+      const params = new URLSearchParams(location.search);
+      const token = params.get('token');
+      const error = params.get('error');
+
+      if (error) {
+        toast({
+          title: 'Google Sign-In Failed',
+          description: decodeURIComponent(error),
+          variant: 'destructive',
+        });
+        navigate('/auth/login', { replace: true });
+      } else if (token) {
+        // Store token and trigger auth check
+        localStorage.setItem('token', token);
+        toast({
+          title: 'Welcome!',
+          description: 'Successfully signed in with Google',
+        });
+        // Force full reload to let AuthContext pick up the token
+        window.location.href = from;
+      } else if (isAuthenticated) {
+        // Cookie-based auth already set by backend
+        navigate(from, { replace: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, location.search]);
 
   function goGoogle() {
     // Redirect to backend Google OAuth; backend will set cookie and redirect back

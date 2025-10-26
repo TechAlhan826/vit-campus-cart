@@ -58,7 +58,6 @@ const Orders = () => {
       case 'pending':
         return <Clock className="h-4 w-4" />;
       case 'paid':
-      case 'processing':
         return <Package className="h-4 w-4" />;
       case 'shipped':
         return <Truck className="h-4 w-4" />;
@@ -76,7 +75,6 @@ const Orders = () => {
       case 'pending':
         return 'bg-yellow-500/10 text-yellow-700 border-yellow-300';
       case 'paid':
-      case 'processing':
         return 'bg-blue-500/10 text-blue-700 border-blue-300';
       case 'shipped':
         return 'bg-purple-500/10 text-purple-700 border-purple-300';

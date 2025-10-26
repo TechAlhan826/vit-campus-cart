@@ -64,7 +64,7 @@ export interface Order {
   userId: string;
   cartItems: CartItem[];
   total: number;
-  status: 'pending' | 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   paymentMethod: 'razorpay' | 'cod';
   shippingAddress: {

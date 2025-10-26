@@ -22,44 +22,116 @@ export const useCart = () => {
     setLoading(true);
     try {
       const response = await api.get('/api/cart');
-  const data = response?.data?.data || response?.data;
-  const cartData = data?.cart || data;
+      const data = response?.data?.data || response?.data;
+      const cartData = data?.cart || data;
       
       console.log('[useCart] Fetched cart:', { response, data, cartData });
       
-      if (cartData && (cartData.id || Array.isArray(cartData?.items))) {
+      if (cartData && (cartData.id || cartData._id || Array.isArray(cartData?.items))) {
         // If product details are missing in items, enrich them by fetching products
         const items = Array.isArray(cartData.items) ? cartData.items : [];
+        console.log('[useCart] Raw items from backend:', items);
+        
         const needEnrich = items.some((it: any) => !it.product && it.productId);
+        console.log('[useCart] Need enrichment:', needEnrich);
+        
         let enrichedItems = items;
         if (needEnrich) {
           try {
             const uniqueIds = Array.from(new Set(items.filter((it: any) => it.productId).map((it: any) => it.productId)));
+            console.log('[useCart] Fetching products for:', uniqueIds);
+            
             const productMap: Record<string, any> = {};
             await Promise.all(uniqueIds.map(async (pid) => {
-              const pr = await api.get(`/api/products/${pid}`);
-              const pdata = pr?.data?.data || pr?.data;
-              productMap[String(pid)] = pdata?.product || pdata;
+              try {
+                const pr = await api.get(`/api/products/${pid}`);
+                const pdata = pr?.data?.data || pr?.data;
+                const product = pdata?.product || pdata;
+                console.log(`[useCart] Fetched product ${pid}:`, product);
+                productMap[String(pid)] = product;
+              } catch (e) {
+                console.error(`[useCart] Failed to fetch product ${pid}:`, e);
+                // Create fallback product data
+                productMap[String(pid)] = {
+                  id: pid,
+                  title: 'Product Unavailable',
+                  images: [],
+                  price: 0,
+                  stock: 0,
+                  category: 'Unknown',
+                  condition: 'unknown',
+                  seller: { id: '', name: 'Unknown' }
+                };
+              }
             }));
-            enrichedItems = items.map((it: any) => ({
-              ...it,
-              product: it.product || productMap[String(it.productId)] || it.product,
-            }));
+            
+            enrichedItems = items.map((it: any) => {
+              const product = it.product || productMap[String(it.productId)];
+              console.log('[useCart] Enriched item:', { original: it, product });
+              return {
+                id: it.id || it._id || `${it.productId}-${Date.now()}`,
+                productId: it.productId,
+                product: product || {
+                  id: it.productId,
+                  title: 'Product Unavailable',
+                  images: [],
+                  price: it.price || 0,
+                  stock: 0,
+                  category: 'Unknown',
+                  condition: 'unknown',
+                  seller: { id: '', name: 'Unknown' }
+                },
+                quantity: it.quantity || 1,
+                price: it.price || 0,
+              };
+            });
+            
+            console.log('[useCart] Final enriched items:', enrichedItems);
           } catch (e) {
-            // best-effort, continue with raw items
+            console.error('[useCart] Enrichment error:', e);
+            // Fallback: create minimal product data from cart items
+            enrichedItems = items.map((it: any) => ({
+              id: it.id || it._id || `${it.productId}-${Date.now()}`,
+              productId: it.productId,
+              product: it.product || {
+                id: it.productId,
+                title: 'Product Unavailable',
+                images: [],
+                price: it.price || 0,
+                stock: 0,
+                category: 'Unknown',
+                condition: 'unknown',
+                seller: { id: '', name: 'Unknown' }
+              },
+              quantity: it.quantity || 1,
+              price: it.price || 0,
+            }));
           }
+        } else {
+          // Ensure items have all required fields even if product exists
+          enrichedItems = items.map((it: any) => ({
+            id: it.id || it._id || `${it.productId}-${Date.now()}`,
+            productId: it.productId || it.product?.id,
+            product: it.product,
+            quantity: it.quantity || 1,
+            price: it.price || 0,
+          }));
         }
 
-        setCart({
+        const finalCart = {
           id: cartData.id || cartData._id || 'cart',
           userId: cartData.userId || '',
           items: enrichedItems,
           total: cartData.total ?? (Array.isArray(enrichedItems) ? enrichedItems.reduce((s: number, it: any) => s + (it.price * it.quantity), 0) : 0),
           itemCount: cartData.itemCount ?? (Array.isArray(enrichedItems) ? enrichedItems.reduce((s: number, it: any) => s + it.quantity, 0) : 0),
           updatedAt: cartData.updatedAt || new Date(),
-        } as any);
+        } as any;
+        
+        console.log('[useCart] Setting final cart:', finalCart);
+        setCart(finalCart);
       } else {
         // Cart might be empty or not created yet
+        console.log('[useCart] No cart data or empty cart');
         setCart(null);
       }
     } catch (error) {
