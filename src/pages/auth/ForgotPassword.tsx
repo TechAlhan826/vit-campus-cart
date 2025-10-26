@@ -20,7 +20,10 @@ const ForgotPassword = () => {
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
     try {
-      const resp = await axios.post('/api/auth/forgot-password', data);
+      const resp = await axios.post('/api/auth/forgot-password', {
+        ...data,
+        email: data.email.toLowerCase().trim()
+      });
       if (resp.data?.success) {
         setIsSubmitted(true);
         toast({ title: 'Reset email sent', description: 'Check your email' });

@@ -127,7 +127,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (credentials: LoginRequest): Promise<boolean> => {
     setLoading(true);
     try {
-      const resp = await axios.post('/api/auth/login', credentials);
+      const resp = await axios.post('/api/auth/login', {
+        ...credentials,
+        email: credentials.email.toLowerCase().trim()
+      });
       // If server sets cookie, user might not be in payload; still fine
       const responseData = resp.data?.data || resp.data;
       const tokenResp = responseData?.token;
@@ -169,7 +172,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: RegisterRequest): Promise<boolean> => {
     setLoading(true);
     try {
-      const resp = await axios.post('/api/auth/register', data);
+      const resp = await axios.post('/api/auth/register', {
+        ...data,
+        email: data.email.toLowerCase().trim()
+      });
       const { token, user: u } = resp.data || {};
       if (token) {
         localStorage.setItem(LOCAL_TOKEN_KEY, token);

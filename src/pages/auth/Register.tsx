@@ -47,8 +47,9 @@ const Register = () => {
       // use context register so state syncs centrally
       const ok = await registerCtx({
         name: formData.name,
-        email: formData.email,
+        email: formData.email.toLowerCase().trim(),
         password: formData.password,
+        confirmPassword: formData.confirmPassword,
         phone: formData.phone,
         role: formData.role,
         collegeRoll: formData.collegeRoll,

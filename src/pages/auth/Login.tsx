@@ -66,7 +66,7 @@ const Login = () => {
     setLoading(true);
     try {
       const ok = await login({
-        email: formData.email,
+        email: formData.email.toLowerCase().trim(),
         password: formData.password,
         rememberMe: formData.rememberMe,
       });
