@@ -37,7 +37,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // boot: try token-first (localStorage), else cookie-based me
+  // Cache user data in memory for persistence
+  const userCacheRef = React.useRef<User | null>(null);
+
+  // boot: try cookie-based /me first (httpOnly JWT), then fallback to Authorization token from localStorage
   useEffect(() => {
     (async () => {
       await checkAuthStatus();
@@ -48,55 +51,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkAuthStatus = async () => {
     setLoading(true);
     const token = localStorage.getItem(LOCAL_TOKEN_KEY);
-    
-    if (!token) {
-      // No token, try cookie-based auth
-      try {
-        const resp = await axios.get('/api/auth/me');
-        const userData = resp.data?.data?.user || resp.data?.user || resp.data?.data || resp.data;
-        if (userData && userData.id) {
-          setUser(userData);
-        } else {
-          setUser(null);
-        }
-      } catch {
-        setUser(null);
-      }
-      setLoading(false);
-      return;
-    }
 
-    // Token exists - verify it and set user data
-    applyToken(token);
     try {
+      // First attempt: rely on cookie
       const resp = await axios.get('/api/auth/me');
       const userData = resp.data?.data?.user || resp.data?.user || resp.data?.data || resp.data;
       
       if (userData && userData.id) {
         setUser(userData);
-      } else {
-        // Token exists but no valid user data - token might be invalid
-        localStorage.removeItem(LOCAL_TOKEN_KEY);
-        applyToken(null);
-        setUser(null);
+        userCacheRef.current = userData;
+        setLoading(false);
+        return;
       }
     } catch (err: any) {
-      console.error('[AuthContext] checkAuthStatus error:', err);
-      
-      // CRITICAL: Only clear auth on explicit authentication failures
-      // Instagram-level persistence: Keep user logged in through network errors
-      if (err.response?.status === 401 || err.response?.status === 403) {
-        // Token is invalid/expired - clear it
-        console.log('[AuthContext] Auth token invalid/expired - clearing');
-        localStorage.removeItem(LOCAL_TOKEN_KEY);
-        applyToken(null);
-        setUser(null);
+      // If cookie-based check fails, try token fallback if present
+      if (token) {
+        try {
+          applyToken(token);
+          const r2 = await axios.get('/api/auth/me');
+          const u2 = r2.data?.data?.user || r2.data?.user || r2.data?.data || r2.data;
+          if (u2 && u2.id) {
+            setUser(u2);
+            userCacheRef.current = u2;
+            setLoading(false);
+            return;
+          }
+          // token invalid
+          localStorage.removeItem(LOCAL_TOKEN_KEY);
+          applyToken(null);
+          setUser(null);
+          userCacheRef.current = null;
+        } catch (err2: any) {
+          if (err2.response?.status === 401 || err2.response?.status === 403) {
+            localStorage.removeItem(LOCAL_TOKEN_KEY);
+            applyToken(null);
+            setUser(null);
+            userCacheRef.current = null;
+          } else if (userCacheRef.current) {
+            setUser(userCacheRef.current);
+          }
+        }
+      } else if (userCacheRef.current) {
+        // Non-auth error (network/server) - keep prior session to avoid flicker
+        setUser(userCacheRef.current);
       } else {
-        // Network error, 500, or other transient errors
-        // Keep token and try to maintain session
-        console.log('[AuthContext] Non-auth error - maintaining session');
-        // Keep user logged in with cached token
-        // Don't call setUser(null) - this is key to Instagram-level persistence
+        // no cache; remain logged out
+        setUser(null);
       }
     }
     
@@ -107,26 +107,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       const resp = await axios.post('/api/auth/login', credentials);
-      
-      // Backend returns: {success: true, data: {token, user}}
+      // If server sets cookie, user might not be in payload; still fine
       const responseData = resp.data?.data || resp.data;
-      const token = responseData?.token;
+      const tokenResp = responseData?.token;
       const u = responseData?.user;
 
-      if (token) {
-        localStorage.setItem(LOCAL_TOKEN_KEY, token);
-        applyToken(token);
+      if (tokenResp) {
+        localStorage.setItem(LOCAL_TOKEN_KEY, tokenResp);
+        applyToken(tokenResp);
       }
 
       if (u && u.id) {
         setUser(u);
-      } else if (token) {
-        // Token exists but no user - fetch from /me
+        userCacheRef.current = u;
+      } else {
+        // Ensure we hydrate from cookie/token
         await checkAuthStatus();
       }
-      
+
       toast({ title: 'Welcome back!', description: u?.name || 'Logged in' });
-      setLoading(false);
       return true;
     } catch (err: any) {
       console.error('login error', err);
@@ -140,8 +139,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: errorMsg, 
         variant: 'destructive' 
       });
-      setLoading(false);
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -154,7 +154,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem(LOCAL_TOKEN_KEY, token);
         applyToken(token);
       } else applyToken(null);
-      if (u) setUser(u);
+      if (u) {
+        setUser(u);
+        userCacheRef.current = u;
+      }
       toast({ title: 'Welcome to UniCart!', description: u?.name || 'Account created' });
       return true;
     } catch (err: any) {
@@ -185,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem(LOCAL_TOKEN_KEY);
       applyToken(null);
       setUser(null);
+      userCacheRef.current = null;
       toast({ title: 'Logged out', description: 'You have been logged out' });
     }
   };
@@ -192,8 +196,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (data: Partial<User>): Promise<boolean> => {
     try {
       const resp = await axios.put('/api/auth/profile', data);
-      if (resp.data?.user) {
-        setUser(resp.data.user);
+      const body = resp.data?.data || resp.data;
+      const updatedUser = body?.user || body;
+      if (updatedUser && updatedUser.id) {
+        setUser(updatedUser);
+        userCacheRef.current = updatedUser;
         toast({ title: 'Profile updated', description: 'Saved' });
         return true;
       }

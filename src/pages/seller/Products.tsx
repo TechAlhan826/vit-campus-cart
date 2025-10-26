@@ -33,8 +33,10 @@ const SellerProducts = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if (user?.id) {
+      fetchProducts();
+    }
+  }, [user?.id]);
 
   const fetchProducts = async () => {
     setLoading(true);

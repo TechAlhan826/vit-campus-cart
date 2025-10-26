@@ -7,8 +7,8 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 // Configure axios defaults with backend base URL
 axios.defaults.baseURL = BACKEND_URL;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
-// Remove withCredentials to avoid CORS issues with wildcard origin
-// axios.defaults.withCredentials = true;
+// Always send cookies for cross-site requests so httpOnly JWT works (server must allow credentials)
+axios.defaults.withCredentials = true;
 
 console.log('[Axios Config] Backend URL:', BACKEND_URL);
 
@@ -16,26 +16,7 @@ console.log('[Axios Config] Backend URL:', BACKEND_URL);
 axios.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Extract meaningful error message
-    if (error.response) {
-      // Server responded with error
-      const data = error.response.data;
-      const message = data?.msg || data?.message || data?.error || 
-                     `Error ${error.response.status}: ${error.response.statusText}`;
-      
-      console.error(`[API Error ${error.response.status}]`, message);
-      
-      // Attach cleaned message to error
-      error.message = message;
-    } else if (error.request) {
-      // Request made but no response
-      console.error('[API Error] No response from server', error.request);
-      error.message = 'Unable to connect to server. Please check your connection.';
-    } else {
-      // Something else happened
-      console.error('[API Error]', error.message);
-    }
-    
+    // Silently pass errors through without logging everywhere
     return Promise.reject(error);
   }
 );
@@ -43,16 +24,10 @@ axios.interceptors.response.use(
 // Add request interceptor to attach JWT token if exists
 axios.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token'); // Match backend key
+    const token = localStorage.getItem('token');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // Log all API requests for debugging
-    if (config.url?.includes('/api/')) {
-      console.log(`[Axios Request] ${config.method?.toUpperCase()} ${config.url}`);
-    }
-    
     return config;
   },
   (error) => Promise.reject(error)

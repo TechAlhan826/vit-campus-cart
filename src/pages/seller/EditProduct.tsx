@@ -73,13 +73,13 @@ const EditProduct = () => {
   };
 
   const categories = [
-    { label: 'Textbooks & Study Materials', value: 'textbooks' },
-    { label: 'Electronics & Gadgets', value: 'electronics' },
-    { label: 'Hostel Essentials', value: 'hostel essentials' },
-    { label: 'Sports & Recreation', value: 'sports' },
-    { label: 'Fashion & Accessories', value: 'fashion' },
-    { label: 'Lab Equipment', value: 'lab equipment' },
-    { label: 'Others', value: 'others' }
+    'Textbooks & Study Materials',
+    'Electronics & Gadgets',
+    'Hostel Essentials',
+    'Sports & Recreation',
+    'Fashion & Accessories',
+    'Lab Equipment',
+    'Others',
   ];
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,14 +269,14 @@ const EditProduct = () => {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="category">Category *</Label>
-                    <Select onValueChange={(value) => setValue('category', value)} defaultValue="others">
+                    <Select onValueChange={(value) => setValue('category', value)} defaultValue={undefined}>
                       <SelectTrigger className="mt-1">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -31,9 +31,11 @@ const SellerDashboard = () => {
   const fetchSellerProducts = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/api/products/seller/me');
+      // Backend doesn't have /api/products/seller/me, fetch all and filter by current seller
+      const response = await api.get('/api/products');
       const data = response?.data?.data || response?.data;
-      const productList = data?.products || (Array.isArray(data) ? data : []);
+      const all = data?.items || data?.products || (Array.isArray(data) ? data : []);
+      const productList = all.filter((p: Product) => p.sellerId === user?.id || p.seller?.id === user?.id);
       setProducts(productList);
     } catch (error) {
       console.error('Failed to fetch products:', error);
@@ -43,11 +45,45 @@ const SellerDashboard = () => {
     }
   };
 
+  const [revenue, setRevenue] = React.useState<number>(0);
+
+  // Fetch seller orders to compute revenue (paid/successful orders only)
+  React.useEffect(() => {
+    const fetchSellerOrdersAndRevenue = async () => {
+      try {
+        // Try dedicated seller orders endpoint first
+        let res = await api.get('/api/orders/seller');
+        if (!res) {
+          // Fallback to query param-based
+          res = await api.get('/api/orders?role=seller');
+        }
+        const data = res?.data?.data || res?.data;
+        const orders = data?.orders || (Array.isArray(data) ? data : []);
+        // Sum revenue for this seller: iterate order items and include amounts for products owned by seller
+        const total = orders.reduce((sum: number, order: any) => {
+          const items = order.cartItems || order.items || [];
+          const itemTotal = items.reduce((s: number, it: any) => {
+            const ownedBySeller = it?.product?.sellerId === user?.id || it?.product?.seller?.id === user?.id;
+            const isPaid = (order.paymentStatus === 'paid') || (order.status === 'delivered' || order.status === 'paid');
+            return s + (ownedBySeller && isPaid ? (it.price * it.quantity) : 0);
+          }, 0);
+          return sum + itemTotal;
+        }, 0);
+        setRevenue(total);
+      } catch (e) {
+        // ignore for now
+        setRevenue(0);
+      }
+    };
+    fetchSellerOrdersAndRevenue();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   const stats = [
     { label: 'Total Products', value: products.length, icon: Package, color: 'text-blue-500' },
     { label: 'Active Listings', value: products.filter(p => p.status === 'active').length, icon: TrendingUp, color: 'text-green-500' },
-    { label: 'Total Views', value: '1.2K', icon: Eye, color: 'text-purple-500' },
-    { label: 'Revenue', value: '₹15,450', icon: IndianRupee, color: 'text-orange-500' },
+    { label: 'Total Views', value: 0, icon: Eye, color: 'text-purple-500' },
+    { label: 'Revenue', value: `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(revenue)}`, icon: IndianRupee, color: 'text-orange-500' },
   ];
 
   const formatPrice = (price: number) => {

@@ -49,13 +49,13 @@ const CreateProduct = () => {
   // Inside CreateProduct.tsx
 
 const categories = [
-  { label: 'Textbooks & Study Materials', value: 'textbooks' },
-  { label: 'Electronics & Gadgets', value: 'electronics' },
-  { label: 'Hostel Essentials', value: 'hostel essentials' },
-  { label: 'Sports & Recreation', value: 'sports' },
-  { label: 'Fashion & Accessories', value: 'fashion' },
-  { label: 'Lab Equipment', value: 'lab equipment' },
-  { label: 'Others', value: 'others' }
+  'Textbooks & Study Materials',
+  'Electronics & Gadgets',
+  'Hostel Essentials',
+  'Sports & Recreation',
+  'Fashion & Accessories',
+  'Lab Equipment',
+  'Others',
 ];
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,20 +199,20 @@ const categories = [
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
                       <Select
-  onValueChange={(value) => setValue('category', value)}
-  defaultValue="others"
->
-  <SelectTrigger>
-    <SelectValue placeholder="Select category" />
-  </SelectTrigger>
-  <SelectContent>
-    {categories.map((c) => (
-      <SelectItem key={c.value} value={c.value}>
-        {c.label}
-      </SelectItem>
-    ))}
-  </SelectContent>
-</Select>
+                        onValueChange={(value) => setValue('category', value)}
+                        defaultValue="Others"
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       {errors.category && (
                         <p className="text-sm text-destructive">{errors.category.message}</p>
                       )}

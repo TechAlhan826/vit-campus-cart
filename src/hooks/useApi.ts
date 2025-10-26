@@ -18,7 +18,7 @@ export const useApi = <T = any>(options: UseApiOptions = {}) => {
 
   const {
     showSuccessToast = false,
-    showErrorToast = true,
+    showErrorToast = false,
     successMessage,
     errorMessage,
   } = options;

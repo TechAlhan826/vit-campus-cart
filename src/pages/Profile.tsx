@@ -167,15 +167,13 @@ const Profile = () => {
 
     try {
       const success = await updateProfile({
-        ...user!,
         name: formData.name,
         profile: {
-          ...user!.profile,
           phone: formData.phone,
           collegeRoll: formData.collegeRoll,
           hostel: formData.hostel,
         },
-      });
+      } as any);
 
       if (success) {
         setEditMode(false);

@@ -49,11 +49,9 @@ const Register = () => {
         name: formData.name,
         email: formData.email,
         password: formData.password,
-        confirmPassword: formData.confirmPassword,
         phone: formData.phone,
         role: formData.role,
         collegeRoll: formData.collegeRoll,
-        agreeToTerms: formData.agreeToTerms,
       } as any);
       if (ok) navigate('/');
     } finally {

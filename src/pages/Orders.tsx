@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,8 @@ const Orders = () => {
   const api = useApi();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const isSellerView = location.pathname.startsWith('/seller/orders');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -29,8 +31,12 @@ const Orders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      // Backend supports GET /api/orders for listing user orders
-      const response = await api.get('/api/orders');
+      // For seller view, try seller-specific endpoint; otherwise, default to buyer orders
+      let response = isSellerView ? await api.get('/api/orders/seller') : await api.get('/api/orders');
+      if (!response && isSellerView) {
+        // Fallback to query param-based
+        response = await api.get('/api/orders?role=seller');
+      }
       const data = response?.data?.data || response?.data;
       const orderList = data?.orders || (Array.isArray(data) ? data : []);
       setOrders(orderList);
@@ -121,7 +127,7 @@ const Orders = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">My Orders</h1>
+  <h1 className="text-3xl font-bold">{isSellerView ? 'Seller Orders' : 'My Orders'}</h1>
         <Button variant="outline" onClick={fetchOrders}>
           Refresh
         </Button>

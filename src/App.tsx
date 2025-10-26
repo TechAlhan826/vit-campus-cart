@@ -63,6 +63,7 @@ const App = () => (
               <Route path="seller/products" element={<ProtectedRoute requireSeller><SellerProducts /></ProtectedRoute>} />
               <Route path="seller/products/new" element={<ProtectedRoute requireSeller><CreateProduct /></ProtectedRoute>} />
               <Route path="seller/products/:id/edit" element={<ProtectedRoute requireSeller><EditProduct /></ProtectedRoute>} />
+              <Route path="seller/orders" element={<ProtectedRoute requireSeller><Orders /></ProtectedRoute>} />
               
               {/* Debug Route */}
               <Route path="debug" element={<DebugTest />} />

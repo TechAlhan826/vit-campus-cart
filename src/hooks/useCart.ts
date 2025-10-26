@@ -22,13 +22,42 @@ export const useCart = () => {
     setLoading(true);
     try {
       const response = await api.get('/api/cart');
-      const data = response?.data?.data || response?.data;
-      const cartData = data?.cart || data;
+  const data = response?.data?.data || response?.data;
+  const cartData = data?.cart || data;
       
       console.log('[useCart] Fetched cart:', { response, data, cartData });
       
-      if (cartData && cartData.id) {
-        setCart(cartData);
+      if (cartData && (cartData.id || Array.isArray(cartData?.items))) {
+        // If product details are missing in items, enrich them by fetching products
+        const items = Array.isArray(cartData.items) ? cartData.items : [];
+        const needEnrich = items.some((it: any) => !it.product && it.productId);
+        let enrichedItems = items;
+        if (needEnrich) {
+          try {
+            const uniqueIds = Array.from(new Set(items.filter((it: any) => it.productId).map((it: any) => it.productId)));
+            const productMap: Record<string, any> = {};
+            await Promise.all(uniqueIds.map(async (pid) => {
+              const pr = await api.get(`/api/products/${pid}`);
+              const pdata = pr?.data?.data || pr?.data;
+              productMap[String(pid)] = pdata?.product || pdata;
+            }));
+            enrichedItems = items.map((it: any) => ({
+              ...it,
+              product: it.product || productMap[String(it.productId)] || it.product,
+            }));
+          } catch (e) {
+            // best-effort, continue with raw items
+          }
+        }
+
+        setCart({
+          id: cartData.id || cartData._id || 'cart',
+          userId: cartData.userId || '',
+          items: enrichedItems,
+          total: cartData.total ?? (Array.isArray(enrichedItems) ? enrichedItems.reduce((s: number, it: any) => s + (it.price * it.quantity), 0) : 0),
+          itemCount: cartData.itemCount ?? (Array.isArray(enrichedItems) ? enrichedItems.reduce((s: number, it: any) => s + it.quantity, 0) : 0),
+          updatedAt: cartData.updatedAt || new Date(),
+        } as any);
       } else {
         // Cart might be empty or not created yet
         setCart(null);
@@ -104,7 +133,20 @@ export const useCart = () => {
       const response = await api.put('/api/cart/update', request);
       
       if (response?.success && response.data) {
-        setCart(response.data);
+        const d = response.data as any;
+        // Try to keep product details when updating
+        const mergedItems = Array.isArray(d.items) ? d.items.map((it: any) => ({
+          ...it,
+          product: (it.product || cart.items.find(ci => ci.productId === it.productId)?.product),
+        })) : cart.items;
+        setCart({
+          id: d.id || cart.id,
+          userId: d.userId || cart.userId,
+          items: mergedItems,
+          total: d.total ?? (Array.isArray(mergedItems) ? mergedItems.reduce((s: number, it: any) => s + (it.price * it.quantity), 0) : cart.total),
+          itemCount: d.itemCount ?? (Array.isArray(mergedItems) ? mergedItems.reduce((s: number, it: any) => s + it.quantity, 0) : cart.itemCount),
+          updatedAt: d.updatedAt || new Date(),
+        } as any);
         return true;
       } else {
         // Rollback optimistic update
@@ -133,7 +175,19 @@ export const useCart = () => {
       const response = await api.delete(`/api/cart/remove/${productId}`);
       
       if (response?.success && response.data) {
-        setCart(response.data);
+        const d = response.data as any;
+        const mergedItems = Array.isArray(d.items) ? d.items.map((it: any) => ({
+          ...it,
+          product: (it.product || cart.items.find(ci => ci.productId === it.productId)?.product),
+        })) : cart.items;
+        setCart({
+          id: d.id || cart.id,
+          userId: d.userId || cart.userId,
+          items: mergedItems,
+          total: d.total ?? (Array.isArray(mergedItems) ? mergedItems.reduce((s: number, it: any) => s + (it.price * it.quantity), 0) : cart.total),
+          itemCount: d.itemCount ?? (Array.isArray(mergedItems) ? mergedItems.reduce((s: number, it: any) => s + it.quantity, 0) : cart.itemCount),
+          updatedAt: d.updatedAt || new Date(),
+        } as any);
         toast({
           title: "Item removed",
           description: "Item has been removed from your cart",
@@ -162,7 +216,15 @@ export const useCart = () => {
       const response = await api.delete('/api/cart/clear');
       
       if (response?.success) {
-        setCart(response.data || { ...cart, items: [], total: 0, itemCount: 0 });
+        const d = (response.data as any) || {};
+        setCart({
+          id: d.id || cart.id,
+          userId: d.userId || cart.userId,
+          items: d.items || [],
+          total: d.total ?? 0,
+          itemCount: d.itemCount ?? 0,
+          updatedAt: d.updatedAt || new Date(),
+        } as any);
         toast({
           title: "Cart cleared",
           description: "All items have been removed from your cart",
