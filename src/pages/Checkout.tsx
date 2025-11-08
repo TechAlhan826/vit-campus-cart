@@ -377,7 +377,7 @@ const Checkout = () => {
                     onValueChange={(value: 'razorpay' | 'cod') => setPaymentMethod(value)}
                     className="space-y-3"
                   >
-                    <div className="flex items-center space-x-2 p-4 border rounded-lg">
+                    <div className="flex items-center space-x-2 p-4 border rounded-lg disabled">
                       <RadioGroupItem value="razorpay" id="razorpay" />
                       <Label htmlFor="razorpay" className="flex items-center gap-2 flex-1 cursor-pointer">
                         <CreditCard className="h-4 w-4" />

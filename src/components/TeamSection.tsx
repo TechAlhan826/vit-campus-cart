@@ -31,15 +31,15 @@ export const TeamSection: React.FC = () => {
     {
       name: "Aravind S",
       rollNumber: "23BCA0167",
-      role: "Unassigned",
-      expertise: [],
+      role: "Frontend",
+      expertise: ["Register Page", "Product Purchase"],
       icon: <Users className="h-6 w-6" />
     },
     {
       name: "Nishant G", 
       rollNumber: "23BCA0252",
-      role: "Unassigned",
-      expertise: [],
+      role: "Frontend",
+      expertise: ["Login Page", "Home Page"],
       icon: <Users className="h-6 w-6" />
     }
   ];
